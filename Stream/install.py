@@ -1,0 +1,61 @@
+"""Install the stream/gift theme addon into this fork's portable runtime."""
+from pathlib import Path
+import argparse, configparser, json, re, shutil
+
+def install(root):
+    root = root.resolve()
+    source = Path(__file__).resolve().parent
+    theme = root/'Themes/Simply Love'
+    overlay = theme/'BGAnimations/ScreenGameplay overlay'
+    if not (overlay/'default.lua').is_file():
+        raise SystemExit('Simply Love is missing from '+str(root))
+    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'StreamArrowFade.lua'):
+        shutil.copy2(source/name, overlay/name)
+    path = overlay/'default.lua'
+    text = path.read_text(encoding='utf-8-sig')
+    hook = 'af[#af+1] = LoadActor("./GiftAPI.lua") -- SimplyLoveGiftAPI'
+    if hook not in text:
+        shutil.copy2(path, path.with_name(path.name+'.before-giftapi'))
+        text = text.replace('return af', hook+'\nreturn af')
+        path.write_text(text, encoding='utf-8')
+    path = theme/'BGAnimations/ScreenGameplay underlay/default.lua'
+    text = path.read_text(encoding='utf-8-sig')
+    if '-- SimplyLoveStreamRGBA' not in text:
+        shutil.copy2(path, path.with_name(path.name+'.before-stream'))
+        # Copy opaque black first; the second quad clears alpha. Actors with
+        # diffusealpha(0) can be culled before drawing, so do not use that.
+        clear = '''
+if PREFSMAN:GetPreference("StreamerMode") then
+ t[#t+1] = Def.ActorFrame{ -- SimplyLoveStreamRGBA
+  Def.Quad{InitCommand=function(self)
+   self:xy(_screen.cx,_screen.cy):zoomto(_screen.w,_screen.h):blend("BlendMode_CopySrc"):diffuse(0,0,0,1)
+  end},
+  Def.Quad{InitCommand=function(self)
+   self:xy(_screen.cx,_screen.cy):zoomto(_screen.w,_screen.h):blend("BlendMode_AlphaKnockOut"):diffuse(1,1,1,1)
+  end},
+ }
+end
+'''
+        anchor = 'for player in ivalues(Players) do'
+        if anchor not in text:
+            raise SystemExit('Unexpected Simply Love gameplay underlay')
+        text = text.replace(anchor, clear+'\n'+anchor, 1)
+        hide = r'(?m)^(\s*)(t\[#t\+1\] = LoadActor\("(?:\./Shared/(?:Header|SongInfoBar|BPMDisplay|VersusStepStatistics)\.lua|\./PerPlayer/(?:Danger|BackgroundFilter|UpperNPSGraph|Score|DifficultyMeter)\.lua|\./PerPlayer/(?:LifeMeter|TargetScore|StepStatistics)/default\.lua)"(?:, player)?\))([^\r\n]*)$'
+        text = re.sub(hide, r'\1if not PREFSMAN:GetPreference("StreamerMode") then \2 end -- SimplyLoveStreamHideUI\3', text)
+        path.write_text(text, encoding='utf-8')
+    # Native ITGmania tap fading already changes alpha rather than dimming RGB.
+    save = root/'Save';(save/'GiftAPI').mkdir(parents=True,exist_ok=True)
+    if not (save/'GiftAPI/config.json').exists():
+        shutil.copy2(source/'config.json',save/'GiftAPI/config.json')
+    path = save/'Preferences.ini'
+    cfg = configparser.ConfigParser(interpolation=None);cfg.optionxform=str
+    if path.exists():cfg.read(path,encoding='utf-8-sig')
+    if not cfg.has_section('Options'):cfg.add_section('Options')
+    for key,value in dict(Theme='Simply Love',StreamerMode='1',Windowed='1',DisplayColorDepth='32',VideoRenderers='opengl',AllowMultipleInstances='1').items():cfg['Options'][key]=value
+    with path.open('w',encoding='utf-8') as handle:cfg.write(handle,space_around_delimiters=False)
+    (root/'Portable.ini').touch(exist_ok=True)
+    print('Installed streaming/gifts into '+str(root))
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path,default=Path(__file__).resolve().parent.parent)
+    install(parser.parse_args().root)

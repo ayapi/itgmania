@@ -1,0 +1,9 @@
+{
+  "max_active_arrows": 24,
+  "max_queued_arrows": 512,
+  "max_tempo_effects": 128,
+  "min_rate": 0.25,
+  "max_rate": 3.0,
+  "min_lead_seconds": 0.8,
+  "sixteenth_backlog_threshold": 48
+}
