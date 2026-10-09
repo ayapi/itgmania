@@ -31,7 +31,7 @@ of 48 or more taps enables sixteenth-note rows. Existing notes and hold/roll
 occupancy count toward the two-foot limit.
 
 `Player:AddGiftTapNotes({{beat,column},...})` inserts only future taps, retains
-the existing note results and refreshes only affected iterator cursors. It does
+the existing note results and reconstructs the affected iterator cursors. It does
 not reload the player, replace the chart or reset a held note. Invalid batches
 are rejected atomically. Modified plays are disqualified from chart best scores.
 

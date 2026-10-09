@@ -3732,6 +3732,7 @@ bool Player::AddGiftTapNotes(const std::vector<std::pair<int, int>>& notes) {
     }
   }
   for (const auto& note : notes) {
+    m_NoteData.PrepareTapInsertion(note.second);
     m_NoteData.SetTapNote(note.second, note.first, TAP_ADDITION_TAP);
     m_NoteData.NotifyTapInsertion(note.second, note.first);
   }

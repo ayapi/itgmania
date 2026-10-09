@@ -1215,6 +1215,15 @@ void NoteData::RevalidateATIs(
   }
 }
 
+void NoteData::PrepareTapInsertion(int track) {
+  for (auto* iter : m_atis) {
+    iter->PrepareInsertion(track);
+  }
+  for (auto* iter : m_const_atis) {
+    iter->PrepareInsertion(track);
+  }
+}
+
 void NoteData::NotifyTapInsertion(int track, int row) {
   for (auto* iter : m_atis) {
     iter->RefreshAfterInsertion(track, row);
@@ -1225,22 +1234,38 @@ void NoteData::NotifyTapInsertion(int track, int row) {
 }
 
 template <typename ND, typename iter, typename TN>
+void NoteData::_all_tracks_iterator<ND, iter, TN>::PrepareInsertion(int track) {
+  const auto& cur = m_vCurrentIters[track];
+  m_PreInsertionAtEnd = cur == m_vEndIters[track];
+  m_PreInsertionRow = m_PreInsertionAtEnd ? 0 : cur->first;
+}
+
+template <typename ND, typename iter, typename TN>
 void NoteData::_all_tracks_iterator<ND, iter, TN>::RefreshAfterInsertion(
     int track, int row) {
-  // Future-only insertion: retain every other cursor and the existing results,
-  // especially the current hold head. std::map insertion preserves iterators.
-  if (row < m_StartRow || row >= m_EndRow) {
-    return;
+  // TrackMap is a deque: every insertion can invalidate its iterators, even
+  // outside this iterator's row range. Rebuild boundaries without dereferencing
+  // old iterators. Preserve the current hold and all other tracks' cursors.
+  iter begin, end;
+  if (m_Inclusive) {
+    m_pNoteData->GetTapNoteRangeInclusive(
+        track, m_StartRow, m_EndRow, begin, end);
+  } else {
+    m_pNoteData->GetTapNoteRange(track, m_StartRow, m_EndRow, begin, end);
   }
+  m_vBeginIters[track] = begin;
+  m_vEndIters[track] = end;
   auto& cur = m_vCurrentIters[track];
-  const bool before = cur == m_vEndIters[track] ||
-      (m_bReverse ? row > cur->first : row < cur->first);
+  cur = m_PreInsertionAtEnd ? end :
+      m_pNoteData->FindTapNote(track, m_PreInsertionRow);
+  const bool before = m_PreInsertionAtEnd ||
+      (m_bReverse ? row > m_PreInsertionRow : row < m_PreInsertionRow);
   const bool unvisited = m_bReverse ? row < m_PrevCurrentRows[track] :
       row > m_PrevCurrentRows[track];
-  if (before && unvisited) {
+  if (row >= m_StartRow && row < m_EndRow && before && unvisited) {
     cur = m_pNoteData->FindTapNote(track, row);
-    Find(m_bReverse);
   }
+  Find(m_bReverse);
 }
 
 template <typename ND, typename iter, typename TN>
