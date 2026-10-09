@@ -1,10 +1,17 @@
 #include "ScreenGameplay.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "ActiveAttackList.h"
@@ -56,6 +63,7 @@
 #include "Profile.h"  // for replay data stuff
 #include "ProfileManager.h"
 #include "RageDisplay.h"
+#include "RageFileManager.h"
 #include "RageInputDevice.h"
 #include "RageLog.h"
 #include "RageSoundManager.h"
@@ -94,6 +102,113 @@
 #include "XmlFile.h"
 #include "XmlFileUtil.h"
 #include "global.h"
+
+// The render thread only copies strings. All mailbox disk access runs here,
+// without holding the memory mutex while opening, reading or writing files.
+class GameplayGiftMailbox {
+ public:
+  GameplayGiftMailbox(const std::string& commands, const std::string& status)
+      : m_commandsPath(std::filesystem::u8path(commands)),
+        m_statusPath(std::filesystem::u8path(status)),
+        m_worker(&GameplayGiftMailbox::Run, this) {}
+  ~GameplayGiftMailbox() {
+    {
+      std::lock_guard<std::mutex> lock(m_mutex);
+      m_stopping = true;
+    }
+    m_changed.notify_one();
+    m_worker.join();
+  }
+  std::string Commands() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_commands;
+  }
+  void Status(const std::string& status) {
+    if (status.size() > 1048576) {
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(m_mutex);
+      m_status = status;
+      ++m_version;
+    }
+    m_changed.notify_one();
+  }
+
+ private:
+  void Run() {
+    size_t writtenVersion = 0;
+    std::filesystem::file_time_type lastRead{};
+    bool hasRead = false;
+    for (;;) {
+      std::string status;
+      size_t version;
+      bool stopping;
+      {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        status = m_status;
+        version = m_version;
+        stopping = m_stopping;
+      }
+      if (version != writtenVersion) {
+        std::ofstream output(m_statusPath, std::ios::binary | std::ios::trunc);
+        output.write(
+            status.data(), static_cast<std::streamsize>(status.size()));
+        output.close();
+        if (output) {
+          writtenVersion = version;
+        }
+      }
+      if (stopping) {
+        return;
+      }
+      std::error_code error;
+      auto modified = std::filesystem::last_write_time(m_commandsPath, error);
+      if (!error && (!hasRead || modified != lastRead)) {
+        const auto size = std::filesystem::file_size(m_commandsPath, error);
+        if (!error && size <= 1048576) {
+          std::ifstream input(m_commandsPath, std::ios::binary);
+          std::string commands(static_cast<size_t>(size), '\0');
+          if (input.read(commands.data(), static_cast<std::streamsize>(size))) {
+            {
+              std::lock_guard<std::mutex> lock(m_mutex);
+              m_commands = std::move(commands);
+            }
+            lastRead = modified;
+            hasRead = true;
+          }
+        }
+      }
+      std::unique_lock<std::mutex> lock(m_mutex);
+      m_changed.wait_for(lock, std::chrono::milliseconds(50), [&] {
+        return m_stopping || m_version != version;
+      });
+    }
+  }
+  std::filesystem::path m_commandsPath, m_statusPath;
+  std::mutex m_mutex;
+  std::condition_variable m_changed;
+  std::string m_commands, m_status;
+  size_t m_version = 0;
+  bool m_stopping = false;
+  std::thread m_worker;
+};
+
+std::string ScreenGameplay::GetGiftCommands() {
+  if (!m_giftMailbox) {
+    m_giftMailbox = std::make_unique<GameplayGiftMailbox>(
+        FILEMAN->ResolvePath("/Save/GiftAPI/commands.json"),
+        FILEMAN->ResolvePath("/Save/GiftAPI/status.json"));
+  }
+  return m_giftMailbox->Commands();
+}
+
+void ScreenGameplay::PublishGiftStatus(const std::string& status) {
+  if (!m_giftMailbox) {
+    GetGiftCommands();
+  }
+  m_giftMailbox->Status(status);
+}
 
 // Defines
 #define SHOW_LIFE_METER_FOR_DISABLED_PLAYERS \
@@ -3451,6 +3566,15 @@ class LunaScreenGameplay : public Luna<ScreenGameplay> {
     }
     return 1;
   }
+  static int GetGiftCommands(T* p, lua_State* L) {
+    const auto commands = p->GetGiftCommands();
+    lua_pushlstring(L, commands.data(), commands.size());
+    return 1;
+  }
+  static int PublishGiftStatus(T* p, lua_State* L) {
+    p->PublishGiftStatus(SArg(1));
+    COMMON_RETURN_SELF;
+  }
   static int GetHasteRate(T* p, lua_State* L) {
     lua_pushnumber(L, p->GetHasteRate());
     return 1;
@@ -3506,6 +3630,8 @@ class LunaScreenGameplay : public Luna<ScreenGameplay> {
     ADD_METHOD(PauseGame);
     ADD_METHOD(IsPaused);
     ADD_METHOD(GetSound);
+    ADD_METHOD(GetGiftCommands);
+    ADD_METHOD(PublishGiftStatus);
     ADD_METHOD(GetHasteRate);
     ADD_METHOD(HasteTurningPoints);
     ADD_METHOD(HasteAddAmounts);

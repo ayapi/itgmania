@@ -1,6 +1,7 @@
 #ifndef SCREEN_GAMEPLAY_H
 #define SCREEN_GAMEPLAY_H
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,7 @@
 #include "Transition.h"
 
 class LyricsLoader;
+class GameplayGiftMailbox;
 class ActiveAttackList;
 class CombinedLifeMeter;
 class Player;
@@ -195,6 +197,8 @@ class ScreenGameplay : public ScreenWithMenuElements {
   void Pause(bool bPause) { PauseGame(bPause); }
   bool IsPaused() const { return m_bPaused; }
   RageSound* GetMusicSound() const { return m_pSoundMusic; }
+  std::string GetGiftCommands();
+  void PublishGiftStatus(const std::string& status);
   float GetHasteRate();
 
   void FailFadeRemovePlayer(PlayerInfo* pi);
@@ -290,6 +294,7 @@ class ScreenGameplay : public ScreenWithMenuElements {
   /** @brief The specific point within ScreenGameplay. */ m_DancingState;
 
  private:
+  std::unique_ptr<GameplayGiftMailbox> m_giftMailbox;
   bool m_bPaused;
   // set_paused_internal exists because GameState's pause variable needs to
   // be kept in sync with ScreenGameplay's.

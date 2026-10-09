@@ -4,12 +4,22 @@ local directory = "Save/GiftAPI/"
 local config = {max_active_arrows=24, max_queued_arrows=512, max_tempo_effects=128,
                 min_rate=0.25, max_rate=3, sixteenth_backlog_threshold=48, min_lead_seconds=0.8}
 local packetCache={}
+local screen
 local performance={max_update_ms=0,max_insert_ms=0,slow_updates=0}
+local function measured(name,callback)
+ local started=GetTimeSinceStart()
+ callback()
+ performance[name]=math.max(performance[name] or 0,(GetTimeSinceStart()-started)*1000)
+end
 local function read(path)
- local f=RageFileUtil.CreateRageFile()
  local contents
- if f:Open(path,1) then contents=f:ReadBytes(1048576) f:Close() end
- f:destroy()
+ if path==directory.."commands.json" and screen and screen.GetGiftCommands then
+  contents=screen:GetGiftCommands()
+ else
+  local f=RageFileUtil.CreateRageFile()
+  if f:Open(path,1) then contents=f:ReadBytes(1048576) f:Close() end
+  f:destroy()
+ end
  if not contents then return nil end
  if packetCache[path] and packetCache[path].contents==contents then return packetCache[path].value end
  local ok,value=pcall(json.decode,contents)
@@ -17,6 +27,10 @@ local function read(path)
  Trace("GiftAPI JSON read failed: "..path.." bytes="..#contents.." "..tostring(value))
 end
 local function write(path,value)
+ if screen and screen.PublishGiftStatus then
+  screen:PublishGiftStatus(json.encode(value))
+  return
+ end
  local f=RageFileUtil.CreateRageFile()
  -- Status is a transient heartbeat, not a persistent save. Stream directly
  -- so Windows readers cannot block a file-replacement operation on the
@@ -38,7 +52,7 @@ config.sixteenth_backlog_threshold=math.max(1,math.floor(config.sixteenth_backlo
 
 local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}, results={}, players={}}
 local byname, containers, bubbleActors={}, {}, {}
-local screen, song, baseline, originalHaste, lastRate, lastPoll, lastStatus
+local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
 local resultById={}
@@ -551,17 +565,17 @@ local af=Def.ActorFrame{
     local pos=GAMESTATE:GetSongPosition()
     local beat=pos:GetSongBeat()
     local ready=beat>=0 and pos:GetMusicSeconds()<song:GetLastSecond() and not screen:IsPaused()
-    if ready and now-lastPoll>=0.1 then consume(now) lastPoll=now end
+    if ready and now-lastPoll>=0.1 then measured("max_commands_ms",function() consume(now) end) lastPoll=now end
     if ready then
      local started=GetTimeSinceStart()
      insertNotes()
      performance.max_insert_ms=math.max(performance.max_insert_ms,(GetTimeSinceStart()-started)*1000)
     end
-    updateTempo(now)
-    updatePointLimits()
-    updateBubbles()
+    measured("max_tempo_ms",function() updateTempo(now) end)
+    measured("max_points_ms",updatePointLimits)
+    measured("max_bubbles_ms",updateBubbles)
     if now-lastStatus>=0.1 then
-     snapshot(ready,ready and "" or "Song has not started, has ended, or is paused") lastStatus=now
+     measured("max_status_ms",function() snapshot(ready,ready and "" or "Song has not started, has ended, or is paused") end) lastStatus=now
     end
    end)
    local elapsed=(GetTimeSinceStart()-now)*1000
