@@ -108,8 +108,8 @@
 class GameplayGiftMailbox {
  public:
   GameplayGiftMailbox(const std::string& commands, const std::string& status)
-      : m_commandsPath(std::filesystem::u8path(commands)),
-        m_statusPath(std::filesystem::u8path(status)),
+      : m_commandsPath(PhysicalPath(commands)),
+        m_statusPath(PhysicalPath(status)),
         m_worker(&GameplayGiftMailbox::Run, this) {}
   ~GameplayGiftMailbox() {
     {
@@ -136,6 +136,16 @@ class GameplayGiftMailbox {
   }
 
  private:
+  static std::filesystem::path PhysicalPath(std::string path) {
+#if defined(_WIN32)
+    // ResolvePath normalizes VPS paths with a leading slash, including
+    // physical drive paths. std::filesystem needs C:/..., not /C:/....
+    if (path.size() >= 4 && path[0] == '/' && path[2] == ':') {
+      path.erase(0, 1);
+    }
+#endif
+    return std::filesystem::u8path(path);
+  }
   void Run() {
     size_t writtenVersion = 0;
     std::filesystem::file_time_type lastRead{};

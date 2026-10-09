@@ -20,7 +20,7 @@ local function read(path)
   if f:Open(path,1) then contents=f:ReadBytes(1048576) f:Close() end
   f:destroy()
  end
- if not contents then return nil end
+ if not contents or contents=="" then return nil end
  if packetCache[path] and packetCache[path].contents==contents then return packetCache[path].value end
  local ok,value=pcall(json.decode,contents)
  if ok then packetCache[path]={contents=contents,value=value} return value end
@@ -56,6 +56,7 @@ local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
 local resultById={}
+local lastReadyFrame
 local function noteKey(beat,column) return tostring(math.floor(beat*48+0.5))..":"..column end
 local function scored(note)
  return note[3]=="TapNoteType_Tap" or note[3]=="TapNoteType_Lift" or note[3]=="TapNoteType_HoldHead" or note[3]=="TapNoteSubType_Hold" or note[3]=="TapNoteSubType_Roll"
@@ -104,6 +105,8 @@ local function snapshot(ready, message)
   original_notes=originalTotal, judged_original_notes=originalJudged,
   hold_intervals=holds,
   performance=performance,
+  mailbox_async=screen and screen.GetGiftCommands~=nil or false,
+  fps=DISPLAY:GetFPS(),
   song_beat=GAMESTATE:GetSongPosition():GetSongBeat(),
   music_seconds=GAMESTATE:GetSongPosition():GetMusicSeconds(),
   saturated=effectiveRate==config.min_rate or effectiveRate==config.max_rate})
@@ -565,6 +568,14 @@ local af=Def.ActorFrame{
     local pos=GAMESTATE:GetSongPosition()
     local beat=pos:GetSongBeat()
     local ready=beat>=0 and pos:GetMusicSeconds()<song:GetLastSecond() and not screen:IsPaused()
+    if ready then
+     if lastReadyFrame then
+      local gap=(now-lastReadyFrame)*1000
+      performance.max_frame_gap_ms=math.max(performance.max_frame_gap_ms or 0,gap)
+      if gap>33.4 then performance.slow_frames=(performance.slow_frames or 0)+1 end
+     end
+     lastReadyFrame=now
+    else lastReadyFrame=nil end
     if ready and now-lastPoll>=0.1 then measured("max_commands_ms",function() consume(now) end) lastPoll=now end
     if ready then
      local started=GetTimeSinceStart()
