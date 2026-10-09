@@ -93,7 +93,8 @@ int ChooseWindowPixelFormat(
   int format = ChoosePixelFormat(GraphicsWindow::GetHDC(), pixfmt);
   if (format && PREFSMAN->m_bStreamerMode) {
     PIXELFORMATDESCRIPTOR actual;
-    DescribePixelFormat(GraphicsWindow::GetHDC(), format, sizeof(actual), &actual);
+    DescribePixelFormat(
+        GraphicsWindow::GetHDC(), format, sizeof(actual), &actual);
     if (actual.cAlphaBits < 8) {
       LOG->Warn("StreamerMode requires an alpha-capable OpenGL framebuffer");
       return 0;

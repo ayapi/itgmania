@@ -3789,7 +3789,8 @@ class LunaPlayer : public Luna<Player> {
           !std::isfinite(col) || col < 1 || col > 4 || col != std::floor(col)) {
         return luaL_error(L, "Invalid gift tap beat or column");
       }
-      notes.emplace_back(BeatToNoteRow(static_cast<float>(beat)), static_cast<int>(col) - 1);
+      notes.emplace_back(
+          BeatToNoteRow(static_cast<float>(beat)), static_cast<int>(col) - 1);
     }
     lua_pushboolean(L, p->AddGiftTapNotes(notes));
     return 1;

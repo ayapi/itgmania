@@ -1256,12 +1256,14 @@ void NoteData::_all_tracks_iterator<ND, iter, TN>::RefreshAfterInsertion(
   m_vBeginIters[track] = begin;
   m_vEndIters[track] = end;
   auto& cur = m_vCurrentIters[track];
-  cur = m_PreInsertionAtEnd ? end :
-      m_pNoteData->FindTapNote(track, m_PreInsertionRow);
-  const bool before = m_PreInsertionAtEnd ||
+  cur = m_PreInsertionAtEnd
+            ? end
+            : m_pNoteData->FindTapNote(track, m_PreInsertionRow);
+  const bool before =
+      m_PreInsertionAtEnd ||
       (m_bReverse ? row > m_PreInsertionRow : row < m_PreInsertionRow);
-  const bool unvisited = m_bReverse ? row < m_PrevCurrentRows[track] :
-      row > m_PrevCurrentRows[track];
+  const bool unvisited = m_bReverse ? row < m_PrevCurrentRows[track]
+                                    : row > m_PrevCurrentRows[track];
   if (row >= m_StartRow && row < m_EndRow && before && unvisited) {
     cur = m_pNoteData->FindTapNote(track, row);
   }
