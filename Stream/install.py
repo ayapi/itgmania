@@ -51,6 +51,9 @@ end
     cfg = configparser.ConfigParser(interpolation=None);cfg.optionxform=str
     if path.exists():cfg.read(path,encoding='utf-8-sig')
     if not cfg.has_section('Options'):cfg.add_section('Options')
+    # Leave existing choices intact; match the source setup's 50% volume
+    # when creating a new portable installation.
+    cfg['Options'].setdefault('SoundVolume', '0.500000')
     for key,value in dict(Theme='Simply Love',StreamerMode='1',Windowed='1',DisplayColorDepth='32',VideoRenderers='opengl',AllowMultipleInstances='1').items():cfg['Options'][key]=value
     with path.open('w',encoding='utf-8') as handle:cfg.write(handle,space_around_delimiters=False)
     (root/'Portable.ini').touch(exist_ok=True)
