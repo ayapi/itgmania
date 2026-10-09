@@ -57,6 +57,10 @@ end
     for key,value in dict(Theme='Simply Love',StreamerMode='1',Windowed='1',DisplayColorDepth='32',VideoRenderers='opengl',AllowMultipleInstances='1').items():cfg['Options'][key]=value
     with path.open('w',encoding='utf-8') as handle:cfg.write(handle,space_around_delimiters=False)
     (root/'Portable.ini').touch(exist_ok=True)
+    (root/'start-game.cmd').write_bytes(
+        b'@echo off\r\ncd /d "%~dp0"\r\n'
+        b'python Stream\\start_obs_background.py\r\n'
+        b'start "" "Program\\ITGmania.exe"\r\n')
     print('Installed streaming/gifts into '+str(root))
 
 if __name__=='__main__':

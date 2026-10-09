@@ -5,6 +5,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import struct
@@ -14,6 +15,34 @@ from urllib.request import urlopen
 
 class OBSError(Exception):
     pass
+
+def remove_stale_filters(obs, source_name, current_name):
+    """Recover only filters created by this controller on an earlier run."""
+    present = obs.call('GetSourceFilterList', dict(sourceName=source_name))['filters']
+    for f in present:
+        name = f['filterName']
+        if (name != current_name and f['filterKind'] == 'color_filter_v2'
+                and re.fullmatch(r'(?:OutFox|ITGmania) GiftAPI 表示連動 [0-9a-f]{8}', name)):
+            obs.call('RemoveSourceFilter', dict(sourceName=source_name, filterName=name))
+
+def controller_lock(host, port):
+    """Windows releases this mutex even when the terminal is forcibly closed."""
+    if os.name != 'nt':
+        return None
+    import ctypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p]
+    kernel.CreateMutexW.restype = ctypes.c_void_p
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    key = hashlib.sha256(f'{host}:{port}'.encode()).hexdigest()[:24]
+    handle = kernel.CreateMutexW(None, False, 'Local\\SimplyLoveGiftAPI_OBS_'+key)
+    error = ctypes.get_last_error()
+    if not handle:
+        raise OBSError('OBS表示連動の起動ロックを取得できません')
+    if error == 183:
+        kernel.CloseHandle(handle)
+        raise OBSError('OBS表示連動は既に起動しています')
+    return kernel, handle
 
 class OBSWebSocket:
     """Small synchronous RFC6455 client for the OBS v5 request protocol."""
@@ -148,7 +177,7 @@ def target_items(obs, source_name, scene_name=None):
 
 def main(argv=None):
     default_config = Path(os.environ.get('APPDATA', ''))/'obs-studio/plugin_config/obs-websocket/config.json'
-    parser = argparse.ArgumentParser(description='OutFoxのプレイ中だけOBSゲームキャプチャを表示します。')
+    parser = argparse.ArgumentParser(description='プレイ中だけOBSゲームキャプチャを表示します。')
     parser.add_argument('--api-url', default='http://127.0.0.1:8765')
     parser.add_argument('--obs-config', default=str(default_config), help='OBS WebSocket設定ファイル。パスワードは自動読込')
     parser.add_argument('--obs-host', default='127.0.0.1')
@@ -162,9 +191,15 @@ def main(argv=None):
     if args.run_seconds is not None and not 0 < args.run_seconds < float('inf'): parser.error('実行秒数は正の有限値にしてください')
     if args.obs_port is not None and not 1 <= args.obs_port <= 65535: parser.error('ポートは1～65535にしてください')
     deadline = time.monotonic()+args.run_seconds if args.run_seconds else float('inf')
+    config = settings(args.obs_config)
+    try:
+        lock = controller_lock(args.obs_host, args.obs_port or config.get('server_port',4455))
+    except OBSError as error:
+        log(str(error))
+        return
     obs = None
     original = {}
-    filter_name = 'OutFox GiftAPI 表示連動 '+uuid.uuid4().hex[:8]
+    filter_name = 'ITGmania GiftAPI 表示連動 '+uuid.uuid4().hex[:8]
     filters = set()
     filter_state = {}
     last_message = None
@@ -191,6 +226,7 @@ def main(argv=None):
                 items = target_items(obs, args.source, args.scene)
                 name = items[0]['name']
                 if name not in filter_state:
+                    remove_stale_filters(obs, name, filter_name)
                     present = obs.call('GetSourceFilterList', dict(sourceName=name))['filters']
                     if not any(f['filterName'] == filter_name for f in present):
                         obs.call('CreateSourceFilter', dict(sourceName=name, filterName=filter_name,
@@ -244,6 +280,8 @@ def main(argv=None):
             log('OBSのフィルターにある「'+filter_name+'」を削除してください。')
         if original and not restored: log('元の表示状態へ戻せませんでした。OBSの目のアイコンを確認してください。')
         log('OBS表示連動終了。')
+        if lock:
+            lock[0].CloseHandle(lock[1])
 
 if __name__ == '__main__':
     main()

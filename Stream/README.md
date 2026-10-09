@@ -38,3 +38,7 @@ are rejected atomically. Modified plays are disqualified from chart best scores.
 `Stream/start-test.cmd` sends test gifts during gameplay.
 `Stream/start-obs-sync.cmd` controls OBS opacity without stopping game capture;
 Ctrl+C restores the prior source state and removes the temporary filter.
+The installed `start-game.cmd` also starts this OBS controller in the background.
+Only one controller runs per OBS server. A restart removes leftover controller
+filters after an interrupted shutdown, without removing chroma key, crop or
+other user filters.
