@@ -42,6 +42,13 @@ def install(root, outfox):
     path=root/'Save/Preferences.ini'
     cfg=configparser.ConfigParser(interpolation=None);cfg.optionxform=str;cfg.read(path,encoding='utf-8-sig')
     cfg['Options']['RateModPreservesPitch']='0'
+    # Casual mode hides songs beyond the single-stage length cutoff.
+    # Preserve the source installation's cutoffs along with its visual settings.
+    previous=configparser.ConfigParser(interpolation=None);previous.optionxform=str
+    previous.read(outfox/'Save/Preferences.ini',encoding='utf-8-sig')
+    for key in ('LongVerSongSeconds','MarathonVerSongSeconds'):
+        if previous.has_option('Options',key):
+            cfg['Options'][key]=previous['Options'][key]
     for section in ['Options','Game-dance']:
         if not cfg.has_section(section):cfg.add_section(section)
         mods=[v.strip() for v in cfg[section].get('DefaultModifiers','').split(',') if v.strip()]
