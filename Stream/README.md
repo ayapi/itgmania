@@ -53,3 +53,7 @@ chart, processes at most four insertions per frame, and reuses unchanged command
 JSON. The game streams its transient status heartbeat; the bridge tolerates an
 incomplete write for up to 0.3 seconds. `/api/status` includes `performance`
 counters for the maximum addon update/insertion times and updates over 16.7 ms.
+
+The native gameplay mailbox reads commands and publishes status on a background
+thread. The render thread exchanges JSON strings in memory; /api/status also
+reports mailbox_async, ps and per-operation/frame timing counters.
