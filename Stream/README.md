@@ -42,3 +42,14 @@ The installed `start-game.cmd` also starts this OBS controller in the background
 Only one controller runs per OBS server. A restart removes leftover controller
 filters after an interrupted shutdown, without removing chroma key, crop or
 other user filters.
+
+New installations use speed-dependent pitch (`RateModPreservesPitch=0`).
+To import the locally installed OutFox SCH-CLASSIC-SMNOTE skin and its beat bars,
+run `python Stream/import_outfox_style.py --outfox "C:/Games/OutFox 0.5.0 Alpha Win64"`.
+The importer copies assets only into the local runtime and leaves OutFox intact.
+
+Gift scheduling indexes occupied rows rather than repeatedly scanning the whole
+chart, processes at most four insertions per frame, and reuses unchanged command
+JSON. The game streams its transient status heartbeat; the bridge tolerates an
+incomplete write for up to 0.3 seconds. `/api/status` includes `performance`
+counters for the maximum addon update/insertion times and updates over 16.7 ms.

@@ -3,19 +3,25 @@ local json = dofile(THEME:GetCurrentThemeDirectory().."BGAnimations/ScreenGamepl
 local directory = "Save/GiftAPI/"
 local config = {max_active_arrows=24, max_queued_arrows=512, max_tempo_effects=128,
                 min_rate=0.25, max_rate=3, sixteenth_backlog_threshold=48, min_lead_seconds=0.8}
+local packetCache={}
+local performance={max_update_ms=0,max_insert_ms=0,slow_updates=0}
 local function read(path)
  local f=RageFileUtil.CreateRageFile()
  local contents
  if f:Open(path,1) then contents=f:ReadBytes(1048576) f:Close() end
  f:destroy()
  if not contents then return nil end
+ if packetCache[path] and packetCache[path].contents==contents then return packetCache[path].value end
  local ok,value=pcall(json.decode,contents)
- if ok then return value end
+ if ok then packetCache[path]={contents=contents,value=value} return value end
  Trace("GiftAPI JSON read failed: "..path.." bytes="..#contents.." "..tostring(value))
 end
 local function write(path,value)
  local f=RageFileUtil.CreateRageFile()
- if f:Open(path,2) then f:Write(json.encode(value)) f:Close() end
+ -- Status is a transient heartbeat, not a persistent save. Stream directly
+ -- so Windows readers cannot block a file-replacement operation on the
+ -- render thread. The bridge keeps its last complete snapshot during writes.
+ if f:Open(path,6) then f:Write(json.encode(value)) f:Close() end
  f:destroy()
 end
 local configured=read(directory.."config.json")
@@ -83,6 +89,7 @@ local function snapshot(ready, message)
   active_arrows=activeCount(), queued_arrows=queueCount(), tempo_effects=#state.effects,
   original_notes=originalTotal, judged_original_notes=originalJudged,
   hold_intervals=holds,
+  performance=performance,
   song_beat=GAMESTATE:GetSongPosition():GetSongBeat(),
   music_seconds=GAMESTATE:GetSongPosition():GetMusicSeconds(),
   saturated=effectiveRate==config.min_rate or effectiveRate==config.max_rate})
@@ -218,76 +225,64 @@ local function geometry(p, beat, column)
  local zy=p.field and p.field:GetZoomY() or 1
  return fx+x*zx,fy+y*zy,yoffset
 end
-local function available(data,beat,column)
- local requiredColumns={}
- local feet=0
+local function occupancyIndex(data)
+ local index={rows={},holds={},lastBeat=0}
  for _,note in ipairs(data) do
-  local sameRow=math.abs(note[1]-beat)<1/96
-  -- Holds/rolls already occupy a foot, including their tail row. Count
-  -- columns once so a head and its sustain never count as two feet.
-  local sustained=note.length and note.length>0 and beat>=note[1] and beat<=note[1]+note.length
-  if scored(note) and (sameRow or sustained) and not requiredColumns[note[2]] then
-   requiredColumns[note[2]]=true
-   feet=feet+1
-  end
-  if note[2]==column then
-   if sameRow or sustained then return false end
+  local row=math.floor(note[1]*48+0.5)
+  index.rows[row]=index.rows[row] or {occupied={},feet={}}
+  index.rows[row].occupied[note[2]]=true
+  if scored(note) then index.rows[row].feet[note[2]]=true end
+  if note.length and note.length>0 then index.holds[#index.holds+1]=note end
+  index.lastBeat=math.max(index.lastBeat,note[1]+(note.length or 0))
+ end
+ return index
+end
+local function occupancyAt(index,beat)
+ local row=index.rows[math.floor(beat*48+0.5)]
+ local occupied,requiredColumns={},{}
+ if row then
+  for col in pairs(row.occupied) do occupied[col]=true end
+  for col in pairs(row.feet) do requiredColumns[col]=true end
+ end
+ for _,note in ipairs(index.holds) do
+  if beat>=note[1] and beat<=note[1]+note.length then
+   occupied[note[2]]=true
+   if scored(note) then requiredColumns[note[2]]=true end
   end
  end
- -- Include previously added taps in data: a large gift must spread across
- -- rows rather than turning one row into a three/four-arrow chord.
- return feet<2
+ local feet=0
+ for _ in pairs(requiredColumns) do feet=feet+1 end
+ return occupied,feet
 end
 local function giftGrid(backlog)
  return backlog>=config.sixteenth_backlog_threshold and 0.25 or 0.5
 end
-local function slot(p,data,grid)
+local function slot(p,index,grid)
  grid=grid or 0.5 -- Eighth notes normally; sixteenths only for a large backlog.
  local position=p.ps:GetSongPosition()
  local beat=position:GetSongBeat()
  local first=math.ceil((beat+math.max(0.5,currentBpm*effectiveRate/60*config.min_lead_seconds))/grid)*grid
  if not p.lastBeat then
-  p.lastBeat=0
-  for _,note in ipairs(data) do p.lastBeat=math.max(p.lastBeat,note[1]+(note.length or 0)) end
+  p.lastBeat=index.lastBeat
  end
  local ending=math.min(first+128,p.lastBeat-grid)
  local startcol=math.random(1,4)
  local bottom=SCREEN_HEIGHT-12
  for b=first,ending,grid do
   if p.timing:IsJudgableAtBeat(b) then
+   local occupied,feet=occupancyAt(index,b)
+   if feet<2 then
    for c=0,3 do
     local col=(startcol+c-1)%4+1
+    if not occupied[col] then
     local _,y=geometry(p,b,col)
     local screenY=p.actor:GetY()+y*p.actor:GetZoomY()
-    if screenY>=bottom and available(data,b,col) then return b,col end
+    if screenY>=bottom then return b,col end
+    end
+   end
    end
   end
  end
-end
-local function pendingHold(p,data)
- -- Replacing the native note table may reset an in-progress hold's result.
- -- Defer only the table update until all current holds have ended.
- local beat=p.ps:GetSongPosition():GetSongBeat()
- for _,note in ipairs(data) do
-  if note.length and note.length>0 and beat>=note[1]-0.5 and beat<=note[1]+note.length+0.25 then return true end
- end
- return false
-end
-local function pendingJudgment(p)
- local seconds=p.ps:GetSongPosition():GetMusicSeconds()
- if p.latestProcessedTime and p.latestProcessedTime>seconds then return true end
- while p.tracked[p.pendingIndex] do
-  local note=p.tracked[p.pendingIndex]
-  if not p.processed[noteKey(note[1],note[2])] then return note.seconds<=seconds end
-  p.pendingIndex=p.pendingIndex+1
- end
- return false
-end
-local function pendingMine(p)
- local seconds=p.ps:GetSongPosition():GetMusicSeconds()
- local window=(PREFSMAN:GetPreference("TimingWindowSecondsW5")*PREFSMAN:GetPreference("TimingWindowScale")+PREFSMAN:GetPreference("TimingWindowAdd")+0.25)*effectiveRate
- for _,time in ipairs(p.mineTimes) do if math.abs(time-seconds)<window then return true end end
- return false
 end
 local function updatePointLimits()
  for _,p in pairs(byname) do
@@ -309,16 +304,20 @@ local function insertNotes()
  local command=state.queue[1]
  local p=byname[command.player]
  local data=p.actor:GetNoteData()
+ local index=occupancyIndex(data)
  local added={}
  local grid=giftGrid(queueCount())
- while command.remaining>0 and activeCount()+#added<config.max_active_arrows do
-  local beat,col=slot(p,data,grid)
+ while command.remaining>0 and #added<4 and activeCount()+#added<config.max_active_arrows do
+  local beat,col=slot(p,index,grid)
   if not beat then
    local r=resultById[command.event_id]
    if r then r.state="partial" r.reason="No room before the end of the chart" end
    table.remove(state.queue,1) break
   end
   data[#data+1]={beat,col,"TapNoteType_Tap",grid==0.5 and "TapNote_8th" or "TapNote_16th"}
+  local row=math.floor(beat*48+0.5)
+  index.rows[row]=index.rows[row] or {occupied={},feet={}}
+  index.rows[row].occupied[col]=true index.rows[row].feet[col]=true
   added[#added+1]={beat=beat,column=col,player=command.player,sender=command.sender,event_id=command.event_id,done=false}
   command.remaining=command.remaining-1
  end
@@ -553,7 +552,11 @@ local af=Def.ActorFrame{
     local beat=pos:GetSongBeat()
     local ready=beat>=0 and pos:GetMusicSeconds()<song:GetLastSecond() and not screen:IsPaused()
     if ready and now-lastPoll>=0.1 then consume(now) lastPoll=now end
-    if ready then insertNotes() end
+    if ready then
+     local started=GetTimeSinceStart()
+     insertNotes()
+     performance.max_insert_ms=math.max(performance.max_insert_ms,(GetTimeSinceStart()-started)*1000)
+    end
     updateTempo(now)
     updatePointLimits()
     updateBubbles()
@@ -561,6 +564,9 @@ local af=Def.ActorFrame{
      snapshot(ready,ready and "" or "Song has not started, has ended, or is paused") lastStatus=now
     end
    end)
+   local elapsed=(GetTimeSinceStart()-now)*1000
+   performance.max_update_ms=math.max(performance.max_update_ms,elapsed)
+   if elapsed>16.7 then performance.slow_updates=performance.slow_updates+1 end
    if not ok then
     Trace("GiftAPI error: "..tostring(err))
     finish("GiftAPI error: "..tostring(err))

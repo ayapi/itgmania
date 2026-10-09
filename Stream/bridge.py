@@ -102,8 +102,12 @@ class Bridge:
                         event = self.events.get(result.get('event_id'))
                         if event:
                             event['response'] = dict(result, session=event['response']['session'])
+            self._complete_status = (time.monotonic(), dict(status))
             return status
         except (OSError, ValueError):
+            cached = getattr(self, '_complete_status', None)
+            if cached and time.monotonic()-cached[0] < 0.3:
+                return dict(cached[1])
             return {'ready': False, 'reason': 'Simply Love gameplay is not connected'}
 
     def submit(self, kind, body):
