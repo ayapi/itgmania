@@ -3749,7 +3749,7 @@ class LunaPlayer : public Luna<Player> {
     int index = 1;
     for (auto iter = data.GetTapNoteRangeAllTracks(0, MAX_NOTE_ROW);
          !iter.IsAtEnd(); ++iter) {
-      lua_createtable(L, 3, 1);
+      lua_createtable(L, 3, 3);
       lua_pushnumber(L, NoteRowToBeat(iter.Row()));
       lua_rawseti(L, -2, 1);
       lua_pushinteger(L, iter.Track() + 1);
@@ -3757,6 +3757,10 @@ class LunaPlayer : public Luna<Player> {
       std::string kind = "TapNoteType_" + TapNoteTypeToString(iter->type);
       lua_pushstring(L, kind.c_str());
       lua_rawseti(L, -2, 3);
+      LuaHelpers::Push(L, iter->result.tns);
+      lua_setfield(L, -2, "tap_score");
+      LuaHelpers::Push(L, iter->HoldResult.hns);
+      lua_setfield(L, -2, "hold_score");
       if (iter->type == TapNoteType_HoldHead) {
         lua_pushnumber(L, NoteRowToBeat(iter->iDuration));
         lua_setfield(L, -2, "length");
