@@ -85,8 +85,21 @@ int ChooseWindowPixelFormat(
   pixfmt->iPixelType = PFD_TYPE_RGBA;
   pixfmt->cColorBits = p.bpp == 16 ? 16 : 24;
   pixfmt->cDepthBits = 16;
+  if (PREFSMAN->m_bStreamerMode) {
+    pixfmt->cColorBits = 24;
+    pixfmt->cAlphaBits = 8;
+  }
 
-  return ChoosePixelFormat(GraphicsWindow::GetHDC(), pixfmt);
+  int format = ChoosePixelFormat(GraphicsWindow::GetHDC(), pixfmt);
+  if (format && PREFSMAN->m_bStreamerMode) {
+    PIXELFORMATDESCRIPTOR actual;
+    DescribePixelFormat(GraphicsWindow::GetHDC(), format, sizeof(actual), &actual);
+    if (actual.cAlphaBits < 8) {
+      LOG->Warn("StreamerMode requires an alpha-capable OpenGL framebuffer");
+      return 0;
+    }
+  }
+  return format;
 }
 
 void DumpPixelFormat(const PIXELFORMATDESCRIPTOR& pfd) {

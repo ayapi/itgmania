@@ -3443,6 +3443,14 @@ class LunaScreenGameplay : public Luna<ScreenGameplay> {
     lua_pushboolean(L, p->IsPaused());
     return 1;
   }
+  static int GetSound(T* p, lua_State* L) {
+    if (p->GetMusicSound()) {
+      p->GetMusicSound()->PushSelf(L);
+    } else {
+      lua_pushnil(L);
+    }
+    return 1;
+  }
   static int GetHasteRate(T* p, lua_State* L) {
     lua_pushnumber(L, p->GetHasteRate());
     return 1;
@@ -3497,6 +3505,7 @@ class LunaScreenGameplay : public Luna<ScreenGameplay> {
     // sm-ssc additions:
     ADD_METHOD(PauseGame);
     ADD_METHOD(IsPaused);
+    ADD_METHOD(GetSound);
     ADD_METHOD(GetHasteRate);
     ADD_METHOD(HasteTurningPoints);
     ADD_METHOD(HasteAddAmounts);

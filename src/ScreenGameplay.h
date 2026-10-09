@@ -194,6 +194,7 @@ class ScreenGameplay : public ScreenWithMenuElements {
   PlayerInfo* GetDummyPlayerInfo(int iDummyIndex);
   void Pause(bool bPause) { PauseGame(bPause); }
   bool IsPaused() const { return m_bPaused; }
+  RageSound* GetMusicSound() const { return m_pSoundMusic; }
   float GetHasteRate();
 
   void FailFadeRemovePlayer(PlayerInfo* pi);

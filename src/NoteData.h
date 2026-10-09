@@ -125,6 +125,7 @@ class NoteData {
     void Revalidate(
         ND* notedata, const std::vector<int>& added_or_removed_tracks,
         bool added);
+    void RefreshAfterInsertion(int track, int row);
   };
   typedef _all_tracks_iterator<NoteData, NoteData::iterator, TapNote>
       all_tracks_iterator;
@@ -274,6 +275,7 @@ class NoteData {
   void RevalidateATIs(
       const std::vector<int>& added_or_removed_tracks, bool added);
   void TransferATIs(NoteData& to);
+  void NotifyTapInsertion(int track, int row);
 
   /* Return an iterator range include iStartRow to iEndRow.  Extend the range to
    * include hold notes overlapping the boundary. */

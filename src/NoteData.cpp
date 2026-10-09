@@ -1215,6 +1215,34 @@ void NoteData::RevalidateATIs(
   }
 }
 
+void NoteData::NotifyTapInsertion(int track, int row) {
+  for (auto* iter : m_atis) {
+    iter->RefreshAfterInsertion(track, row);
+  }
+  for (auto* iter : m_const_atis) {
+    iter->RefreshAfterInsertion(track, row);
+  }
+}
+
+template <typename ND, typename iter, typename TN>
+void NoteData::_all_tracks_iterator<ND, iter, TN>::RefreshAfterInsertion(
+    int track, int row) {
+  // Future-only insertion: retain every other cursor and the existing results,
+  // especially the current hold head. std::map insertion preserves iterators.
+  if (row < m_StartRow || row >= m_EndRow) {
+    return;
+  }
+  auto& cur = m_vCurrentIters[track];
+  const bool before = cur == m_vEndIters[track] ||
+      (m_bReverse ? row > cur->first : row < cur->first);
+  const bool unvisited = m_bReverse ? row < m_PrevCurrentRows[track] :
+      row > m_PrevCurrentRows[track];
+  if (before && unvisited) {
+    cur = m_pNoteData->FindTapNote(track, row);
+    Find(m_bReverse);
+  }
+}
+
 template <typename ND, typename iter, typename TN>
 void NoteData::_all_tracks_iterator<ND, iter, TN>::Find(bool bReverse) {
   // If no notes can be found in the range, m_iTrack will stay -1 and IsAtEnd()

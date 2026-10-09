@@ -156,6 +156,7 @@ PrefsManager::PrefsManager()
       m_sDefaultModifiers("DefaultModifiers", ""),
 
       m_bWindowed("Windowed", true),
+      m_bStreamerMode("StreamerMode", false),
       m_sDisplayId("DisplayId", ""),
       m_iDisplayWidth("DisplayWidth", 854),
       m_iDisplayHeight("DisplayHeight", 480),

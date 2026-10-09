@@ -115,6 +115,7 @@ class Player : public ActorFrame {
   static float GetMaxStepDistanceSeconds();
   static float GetWindowSeconds(TimingWindow tw);
   const NoteData& GetNoteData() const { return m_NoteData; }
+  bool AddGiftTapNotes(const std::vector<std::pair<int, int>>& notes);
   bool HasVisibleParts() const { return m_pNoteField != nullptr; }
 
   void SetActorWithJudgmentPosition(Actor* pActor) {

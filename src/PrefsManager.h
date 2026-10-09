@@ -154,6 +154,7 @@ class PrefsManager {
 
  public:
   Preference<bool> m_bWindowed;
+  Preference<bool> m_bStreamerMode;
   Preference<std::string> m_sDisplayId;
   Preference<int> m_iDisplayWidth;
   Preference<int> m_iDisplayHeight;

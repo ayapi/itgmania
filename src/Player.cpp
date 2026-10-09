@@ -3705,8 +3705,90 @@ std::string Player::ApplyRandomAttack() {
 #include "LuaBinding.h"
 
 /** @brief Allow Lua to have access to the Player. */
+bool Player::AddGiftTapNotes(const std::vector<std::pair<int, int>>& notes) {
+  if (!m_pPlayerStageStats || !m_Timing || m_NoteData.GetNumTracks() != 4 ||
+      notes.empty() || notes.size() > 64) {
+    return false;
+  }
+  std::set<std::pair<int, int>> planned;
+  const int currentRow = BeatToNoteRow(m_pPlayerState->m_Position.m_fSongBeat);
+  for (const auto& note : notes) {
+    const int row = note.first, col = note.second;
+    if (col < 0 || col >= 4 || row <= currentRow + ROWS_PER_BEAT / 2 ||
+        row > m_NoteData.GetLastRow() || !m_Timing->IsJudgableAtRow(row) ||
+        m_NoteData.GetTapNote(col, row).type != TapNoteType_Empty ||
+        m_NoteData.IsHoldNoteAtRow(col, row) || !planned.insert(note).second) {
+      return false;
+    }
+    int feet = 0;
+    for (int c = 0; c < 4; ++c) {
+      if (m_NoteData.GetTapNote(c, row).type != TapNoteType_Empty ||
+          m_NoteData.IsHoldNoteAtRow(c, row) || planned.count({row, c})) {
+        ++feet;
+      }
+    }
+    if (feet > 2) {
+      return false;
+    }
+  }
+  for (const auto& note : notes) {
+    m_NoteData.SetTapNote(note.second, note.first, TAP_ADDITION_TAP);
+    m_NoteData.NotifyTapInsertion(note.second, note.first);
+  }
+  // Do not save gift-modified play as a best score for the original chart.
+  m_pPlayerStageStats->m_bDisqualified = true;
+  return true;
+}
+
 class LunaPlayer : public Luna<Player> {
  public:
+  static int GetNoteData(T* p, lua_State* L) {
+    const NoteData& data = p->GetNoteData();
+    lua_newtable(L);
+    int index = 1;
+    for (auto iter = data.GetTapNoteRangeAllTracks(0, MAX_NOTE_ROW);
+         !iter.IsAtEnd(); ++iter) {
+      lua_createtable(L, 3, 1);
+      lua_pushnumber(L, NoteRowToBeat(iter.Row()));
+      lua_rawseti(L, -2, 1);
+      lua_pushinteger(L, iter.Track() + 1);
+      lua_rawseti(L, -2, 2);
+      std::string kind = "TapNoteType_" + TapNoteTypeToString(iter->type);
+      lua_pushstring(L, kind.c_str());
+      lua_rawseti(L, -2, 3);
+      if (iter->type == TapNoteType_HoldHead) {
+        lua_pushnumber(L, NoteRowToBeat(iter->iDuration));
+        lua_setfield(L, -2, "length");
+      }
+      lua_rawseti(L, -2, index++);
+    }
+    return 1;
+  }
+  static int AddGiftTapNotes(T* p, lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    const size_t count = lua_objlen(L, 1);
+    if (count == 0 || count > 64) {
+      return luaL_error(L, "Expected 1 to 64 future gift taps");
+    }
+    std::vector<std::pair<int, int>> notes;
+    for (size_t i = 1; i <= count; ++i) {
+      lua_rawgeti(L, 1, static_cast<int>(i));
+      luaL_checktype(L, -1, LUA_TTABLE);
+      lua_rawgeti(L, -1, 1);
+      const double beat = luaL_checknumber(L, -1);
+      lua_pop(L, 1);
+      lua_rawgeti(L, -1, 2);
+      const double col = luaL_checknumber(L, -1);
+      lua_pop(L, 2);
+      if (!std::isfinite(beat) || beat < 0 || beat > 100000 ||
+          !std::isfinite(col) || col < 1 || col > 4 || col != std::floor(col)) {
+        return luaL_error(L, "Invalid gift tap beat or column");
+      }
+      notes.emplace_back(BeatToNoteRow(static_cast<float>(beat)), static_cast<int>(col) - 1);
+    }
+    lua_pushboolean(L, p->AddGiftTapNotes(notes));
+    return 1;
+  }
   static int SetLife(T* p, lua_State* L) {
     if (p->m_inside_lua_set_life) {
       luaL_error(
@@ -3748,6 +3830,8 @@ class LunaPlayer : public Luna<Player> {
   GET_SET_BOOL_METHOD(oitg_zoom_mode, m_oitg_zoom_mode);
 
   LunaPlayer() {
+    ADD_METHOD(GetNoteData);
+    ADD_METHOD(AddGiftTapNotes);
     ADD_METHOD(SetLife);
     ADD_METHOD(ChangeLife);
     ADD_METHOD(SetActorWithJudgmentPosition);
