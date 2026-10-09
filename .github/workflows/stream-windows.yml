@@ -33,4 +33,7 @@ jobs:
           path: |
             Program/*.exe
             Program/*.dll
+            Program/*.vdi
+            Program/*.pdb
+            Program/*.map
           if-no-files-found: error
