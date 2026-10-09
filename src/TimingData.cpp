@@ -1368,6 +1368,10 @@ class LunaTimingData : public Luna<TimingData> {
     lua_pushnumber(L, p->GetBPMAtBeat(FArg(1)));
     return 1;
   }
+  static int IsJudgableAtBeat(T* p, lua_State* L) {
+    lua_pushboolean(L, p->IsJudgableAtRow(BeatToNoteRow(FArg(1))));
+    return 1;
+  }
   static int GetBeatFromElapsedTime(T* p, lua_State* L) {
     lua_pushnumber(L, p->GetBeatFromElapsedTime(FArg(1)));
     return 1;
@@ -1401,6 +1405,7 @@ class LunaTimingData : public Luna<TimingData> {
     ADD_METHOD(HasNegativeBPMs);
     // formerly in Song.cpp in sm-ssc private beta 1.x:
     ADD_METHOD(GetBPMAtBeat);
+    ADD_METHOD(IsJudgableAtBeat);
     ADD_METHOD(GetBeatFromElapsedTime);
     ADD_METHOD(GetElapsedTimeFromBeat);
   }

@@ -83,6 +83,8 @@ local function snapshot(ready, message)
   active_arrows=activeCount(), queued_arrows=queueCount(), tempo_effects=#state.effects,
   original_notes=originalTotal, judged_original_notes=originalJudged,
   hold_intervals=holds,
+  song_beat=GAMESTATE:GetSongPosition():GetSongBeat(),
+  music_seconds=GAMESTATE:GetSongPosition():GetMusicSeconds(),
   saturated=effectiveRate==config.min_rate or effectiveRate==config.max_rate})
 end
 local function songOptions(level) return GAMESTATE:GetSongOptionsObject(level) end
