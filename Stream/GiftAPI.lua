@@ -92,6 +92,12 @@ local function queueCount()
  return n
 end
 local function snapshot(ready, message)
+ local tempoEffects={}
+ local now=GetTimeSinceStart()
+ for _,effect in ipairs(state.effects) do
+  tempoEffects[#tempoEffects+1]={event_id=effect.event_id,sender=effect.sender or "",
+   bpm_delta=effect.delta,remaining_seconds=math.max(0,effect.expires-now)}
+ end
  local originalTotal,originalJudged,holds=0,0,0
  for _,p in pairs(byname) do
   for key in pairs(p.original or {}) do originalTotal=originalTotal+1 if p.processed[key] then originalJudged=originalJudged+1 end end
@@ -100,6 +106,9 @@ local function snapshot(ready, message)
  write(directory.."status.json",{ready=ready,reason=message or "",session=state.session,
   server_id=state.server_id,cursor=state.cursor,players=state.players,results=state.results,
   song=song and song:GetDisplayMainTitle() or "", base_bpm=currentBpm,
+  song_title=song and song:GetDisplayFullTitle() or "",
+  song_artist=song and song:GetDisplayArtist() or "",
+  active_tempo_effects=tempoEffects,
   bpm_delta=totalDelta, effective_bpm=currentBpm*effectiveRate, rate=effectiveRate,
   active_arrows=activeCount(), queued_arrows=queueCount(), tempo_effects=#state.effects,
   original_notes=originalTotal, judged_original_notes=originalJudged,
@@ -196,7 +205,7 @@ local function consume(now)
      result(command,"rejected","Too many tempo effects")
     else
      modified()
-     state.effects[#state.effects+1]={delta=command.bpm_delta,expires=now+command.duration_seconds,event_id=command.event_id}
+     state.effects[#state.effects+1]={delta=command.bpm_delta,expires=now+command.duration_seconds,event_id=command.event_id,sender=command.sender}
      result(command,"active")
     end
    elseif command.kind=="notes" then

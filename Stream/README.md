@@ -23,6 +23,19 @@ is unchanged:
 - `POST /api/tempo`: `{"sender":"viewer","bpm_delta":10,"duration_seconds":20}`
 - `GET /api/status` and `GET /api/events/<event_id>` report readiness and results.
 
+For OBS stream information, add a browser source with URL
+`http://127.0.0.1:8765/overlay` (initial canvas: 1020 × 380, 30 FPS).
+Keep the API bridge running. The page polls status four times per second,
+displays the effective BPM, song title/artist, and individually active tempo
+gifts with their sender, BPM delta, and remaining seconds. It is transparent
+outside the information panel and hides when gameplay is inactive or the
+heartbeat is disconnected. Edit `Stream/overlay.html` to adjust appearance.
+
+The status response adds `song_title`, `song_artist`, and
+`active_tempo_effects`, a list of `{event_id, sender, bpm_delta,
+remaining_seconds}` objects. Existing fields and gift endpoints remain
+compatible. A new gameplay screen reloads the updated theme actor.
+
 Tempo deltas add together and each effect expires independently. Audio and note
 timing use the same native music rate. Names follow their notes in a right-hand
 column, wrap to two lines and truncate with `...`. They have opaque white

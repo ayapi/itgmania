@@ -176,7 +176,15 @@ def make_handler(bridge):
         def do_GET(self):
             try:
                 path = urlsplit(self.path).path
-                if path == '/api/status':
+                if path in ('/overlay', '/overlay/', '/overlay/index.html'):
+                    data = (Path(__file__).resolve().parent / 'overlay.html').read_bytes()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(len(data)))
+                    self.send_header('Cache-Control', 'no-store')
+                    self.end_headers()
+                    self.wfile.write(data)
+                elif path == '/api/status':
                     self.reply(200, bridge.status())
                 elif path.startswith('/api/events/'):
                     self.reply(200, bridge.event(unquote(path[len('/api/events/'):])) )
@@ -184,6 +192,8 @@ def make_handler(bridge):
                     raise APIError(404, 'Unknown endpoint')
             except APIError as e:
                 self.reply(e.status, {'error': e.message})
+            except OSError:
+                self.reply(503, {'error': 'Overlay is unavailable'})
 
         def do_POST(self):
             try:
