@@ -472,16 +472,15 @@ local function updateBubbles()
    local angle=math.atan2(dy,dx)*180/math.pi
    local a=item.actor
    a:xy(x,y):visible(true)
-   a:GetChild("Background"):zoomto(width,40)
    local text=a:GetChild("Sender")
    if not item.note.formattedName then
     text:maxwidth(0)
     item.note.formattedName=formatSender(item.note.sender,function(value)
      text:settext(value)
      return text:GetWidth()*0.7
-    end,width-10)
+    end,width-6)
    end
-   text:settext(item.note.formattedName):maxwidth((width-10)/0.7)
+   text:settext(item.note.formattedName):maxwidth((width-6)/0.7)
    a:GetChild("Leader"):xy((edge+targetX)/2-x,dy/2):zoomto(math.sqrt(dx*dx+dy*dy),1):rotationz(angle)
    a:GetChild("Target"):xy(targetX-x,item.y-y)
   end
@@ -604,14 +603,33 @@ local af=Def.ActorFrame{
  end,
  OffCommand=function(self) if initialized then finish("Gameplay ended") end end,
 }
+local function roundedBubbleVertices(width,height,radius)
+ local white={1,1,1,1}
+ local vertices={{{0,0,0},white}}
+ local corners={{width/2-radius,-height/2+radius,-90},
+                {width/2-radius,height/2-radius,0},
+                {-width/2+radius,height/2-radius,90},
+                {-width/2+radius,-height/2+radius,180}}
+ for _,corner in ipairs(corners) do
+  for step=0,8 do
+   local angle=math.rad(corner[3]+step*90/8)
+   vertices[#vertices+1]={{corner[1]+radius*math.cos(angle),corner[2]+radius*math.sin(angle),0},white}
+  end
+ end
+ vertices[#vertices+1]=vertices[2]
+ return vertices
+end
 for i=1,config.max_active_arrows do
  local index=i
  af[#af+1]=Def.ActorFrame{
   InitCommand=function(self) bubbleActors[index]=self self:visible(false) end,
   Def.Quad{Name="Leader",InitCommand=function(self) self:diffuse(1,1,1,1) end},
   Def.Quad{Name="Target",InitCommand=function(self) self:zoomto(3,3):diffuse(1,1,1,1) end},
-  Def.Quad{Name="Background",InitCommand=function(self) self:zoomto(66,40):diffuse(1,1,1,1) end},
-  LoadFont("Common Normal")..{Name="Sender",InitCommand=function(self) self:zoom(0.7):maxwidth(80):diffuse(0,0,0,1):shadowlength(0) end},
+  Def.ActorMultiVertex{Name="Background",InitCommand=function(self)
+   local vertices=roundedBubbleVertices(66,32,4)
+   self:SetDrawState({Mode="DrawMode_Fan"}):SetNumVertices(#vertices):SetVertices(vertices)
+  end},
+  LoadFont("Common Normal")..{Name="Sender",InitCommand=function(self) self:zoom(0.7):vertspacing(-5):maxwidth(80):diffuse(0,0,0,1):shadowlength(0) end},
  }
 end
 return af

@@ -43,6 +43,27 @@ end
         hide = r'(?m)^(\s*)(t\[#t\+1\] = LoadActor\("(?:\./Shared/(?:Header|SongInfoBar|BPMDisplay|VersusStepStatistics)\.lua|\./PerPlayer/(?:Danger|BackgroundFilter|UpperNPSGraph|Score|DifficultyMeter)\.lua|\./PerPlayer/(?:LifeMeter|TargetScore|StepStatistics)/default\.lua)"(?:, player)?\))([^\r\n]*)$'
         text = re.sub(hide, r'\1if not PREFSMAN:GetPreference("StreamerMode") then \2 end -- SimplyLoveStreamHideUI\3', text)
         path.write_text(text, encoding='utf-8')
+    path = theme/'Scripts/SL-Layout.lua'
+    text = path.read_text(encoding='utf-8-sig')
+    if '-- SimplyLoveStreamCompactJudgment' not in text:
+        anchor = '    local judgmentHeight = 40'
+        if anchor not in text:raise SystemExit('Unexpected Simply Love feedback layout')
+        text = text.replace(anchor, '''    -- SimplyLoveStreamCompactJudgment: keep feedback just below receptors.
+    if PREFSMAN:GetPreference("StreamerMode") and not reverse then
+        judgmentY = _screen.cy - 80
+        comboY = _screen.cy - 40
+    end
+    local judgmentHeight = 40''', 1)
+        text = text.replace('        Combo = { y = comboY },',
+                            '        Combo = { y = comboY },\n        Judgment = { y = judgmentY },', 1)
+        text += '''
+-- Share the same anchor with surrounding feedback and combo layout.
+function JudgmentTransformCommand(self, params)
+    local layout = GetGameplayLayout(params.Player, params.bReverse)
+    self:xy(0, layout.Judgment.y - _screen.cy)
+end
+'''
+        path.write_text(text, encoding='utf-8')
     # Native ITGmania tap fading already changes alpha rather than dimming RGB.
     save = root/'Save';(save/'GiftAPI').mkdir(parents=True,exist_ok=True)
     if not (save/'GiftAPI/config.json').exists():
