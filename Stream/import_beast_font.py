@@ -68,7 +68,7 @@ def install(root, archive):
         digits.alpha_composite(glyph, (index*124+(124-glyph.width)//2, (200-glyph.height)//2))
     digits.save(directory/'Beast Machines 10x1 (doubleres).png')
     (directory/'Beast Machines.ini').write_text(
-        '[Char Widths]\nline 0=1234567890\nDefaultWidth=52\nAddToAllWidths=0\n', encoding='utf-8')
+        '[Char Widths]\nline 0=1234567890\nDefaultWidth=52\nAddToAllWidths=-6\n', encoding='utf-8')
     for name, anchor, replacement in [
         ('Player judgment.lua', 'if file_to_load == "None" then',
          'if PREFSMAN:GetPreference("StreamerMode") then file_to_load="'+filename+'" end\n\nif file_to_load == "None" then'),
@@ -80,6 +80,17 @@ def install(root, archive):
             if anchor not in text:raise ValueError('Unexpected player graphic: '+name)
             text = text.replace(anchor, '-- SimplyLoveBeastMachines\n'+replacement, 1)
             path.write_text(text, encoding='utf-8')
+    path = theme/'Graphics/Player combo.lua'
+    text = path.read_text(encoding='utf-8-sig')
+    if '-- SimplyLoveHideMissStreak' not in text:
+        anchor = '\t\tlocal CurrentCombo = params.Misses or params.Combo'
+        if anchor not in text:raise ValueError('Unexpected combo visibility controller')
+        text = text.replace(anchor, '''        if PREFSMAN:GetPreference("StreamerMode") and (params.Misses or 0) > 0 then -- SimplyLoveHideMissStreak
+            self:visible(false)
+            return
+        end
+'''+anchor, 1)
+        path.write_text(text, encoding='utf-8')
     preview = Image.new('RGBA', (440, 7*148+140))
     for row in range(7):preview.alpha_composite(atlas.crop((0,row*148,440,(row+1)*148)), (0,row*148))
     number = label(data, '123456', '#ffffff', 74)
