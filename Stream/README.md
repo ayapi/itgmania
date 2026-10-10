@@ -48,6 +48,36 @@ To import the locally installed OutFox SCH-CLASSIC-SMNOTE skin and its beat bars
 run `python Stream/import_outfox_style.py --outfox "C:/Games/OutFox 0.5.0 Alpha Win64"`.
 The importer copies assets only into the local runtime and leaves OutFox intact.
 
+The streaming overlay uses compact, rounded gift labels and fades the top edge
+into transparency without dimming RGB. Judgment and combo feedback sits just
+below the receptors. Menus and song previews are silent while gameplay audio
+and menu sound effects remain enabled.
+
+The installed `start-game.cmd` launches a background window-position tracker.
+It saves normal window coordinates in `Save/WindowPosition.json`, restores them
+on the next launch, and keeps the title bar reachable after monitor changes.
+Launch through this command file to enable position restoration.
+
+To import foot-pad bindings, run `python Stream/import_outfox_input.py --outfox
+"C:/Games/OutFox 0.5.0 Alpha Win64"`. OutFox's `Joy1_Button 3` must be converted
+to ITGmania's `Joy1_B3`; a direct Keymaps.ini copy does not work. The importer
+backs up the destination before replacing bindings. The deployed setup also
+uses `AutoMapOnJoyChange=0` in `Save/Preferences.ini` to preserve manual mapping,
+and `ShowMouseCursor=1` in `Data/Static.ini` to keep the mouse visible.
+
+Custom Beast Machines assets are generated locally from the user's font ZIP:
+
+```powershell
+python -m pip install Pillow
+python Stream/import_beast_font.py --root "C:/path/to/portable-game" --archive "C:/path/to/beast-machines-cufonfonts.zip"
+```
+
+The generator creates the judgment sprite sheet and combo bitmap font, applies
+one text size to all judgments, and adds spacing between outlined letters.
+Restart the game after regenerating its textures. Font files, generated custom
+font assets, OutFox skins, songs, and local OBS credentials are not bundled in
+this repository.
+
 Gift scheduling indexes occupied rows rather than repeatedly scanning the whole
 chart, processes at most four insertions per frame, and reuses unchanged command
 JSON. The game streams its transient status heartbeat; the bridge tolerates an
