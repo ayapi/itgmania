@@ -89,7 +89,7 @@ end
     (root/'start-game.cmd').write_bytes(
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_obs_background.py\r\n'
-        b'start "" "Program\\ITGmania.exe"\r\n')
+        b'python Stream\\start_game_background.py\r\n')
     print('Installed streaming/gifts into '+str(root))
 
 if __name__=='__main__':
