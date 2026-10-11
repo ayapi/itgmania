@@ -20,11 +20,10 @@ return Def.ActorFrame{
    gifts=self:GetParent():GetChild("SimplyLoveGiftAPI")
    player:x(SCREEN_WIDTH*0.25)
    local offset=SCREEN_WIDTH*0.72-player:GetX()
-   -- Give the stream copy headroom for stationary names and BPM. P1 keeps
-   -- its original vertical position for the person playing the chart.
-   self:xy(offset,80):visible(true)
+   -- Mirror horizontally only: both receptor rows stay at the same height.
+   self:xy(offset,0):visible(true)
    SL.StreamMirrorOffsetX=offset
-   SL.StreamMirrorOffsetY=80
+   SL.StreamMirrorOffsetY=0
   end)
   self:SetDrawFunction(function()
    if not player then return end
@@ -32,7 +31,7 @@ return Def.ActorFrame{
     player:DrawStreamMirror()
     -- Fade only the already-rendered notes. Stationary cards and BPM
     -- must stay opaque even when their top slots occupy this region.
-    if fade then fade:xy(player:GetX(),32-80):Draw() end
+    if fade then fade:xy(player:GetX(),32):Draw() end
     if gifts then gifts:playcommand("StreamMirrorDraw") end
    end)
    if not ok then

@@ -21,10 +21,9 @@ left and a rendering copy on the right. The copy rotates note/receptor arrows
 P1's judgments, combo, gift notes and readable name labels; P2 is not joined
 and gameplay is updated only once. Actual two-player play does not use this
 copy. `StreamMirror.lua` sets the two centers to 25% and 72% of window width,
-with 80 logical units of headroom in the right copy. The player-facing field
-keeps its original Y position. At 1280 × 720, crop left 707/right 144 (429 ×
-720), then center this source horizontally in the portrait canvas. Move its
-OBS Y position up by 120 pixels times its scale to preserve receptor placement.
+with both receptor rows at the same Y position. At 1280 × 720, crop left
+707/right 144 (429 × 720), then center this source horizontally in the portrait
+canvas. No vertical offset is applied to the stream copy.
 Gift cards stack beside the face at ±110 logical units from the field center,
 three per side. Older cards sit above newer ones. They slide up in 160 ms on
 arrival/reflow; they never scroll with the notes. Thin leaders follow the live
