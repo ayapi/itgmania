@@ -109,6 +109,8 @@ local function snapshot(ready, message)
   song_title=song and song:GetDisplayFullTitle() or "",
   song_artist=song and song:GetDisplayArtist() or "",
   active_tempo_effects=tempoEffects,
+  stream_mirror=SL.StreamMirrorOffsetX~=nil,
+  stream_mirror_offset_pixels=(SL.StreamMirrorOffsetX or 0)*DISPLAY:GetDisplayWidth()/SCREEN_WIDTH,
   bpm_delta=totalDelta, effective_bpm=currentBpm*effectiveRate, rate=effectiveRate,
   active_arrows=activeCount(), queued_arrows=queueCount(), tempo_effects=#state.effects,
   original_notes=originalTotal, judged_original_notes=originalJudged,

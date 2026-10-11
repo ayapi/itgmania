@@ -10,7 +10,7 @@ def install(root):
     overlay = theme/'BGAnimations/ScreenGameplay overlay'
     if not (overlay/'default.lua').is_file():
         raise SystemExit('Simply Love is missing from '+str(root))
-    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'StreamArrowFade.lua', 'StreamEdgeFade.lua'):
+    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'StreamArrowFade.lua', 'StreamEdgeFade.lua', 'StreamMirror.lua'):
         shutil.copy2(source/name, overlay/name)
     path = overlay/'default.lua'
     text = path.read_text(encoding='utf-8-sig')
@@ -21,6 +21,11 @@ def install(root):
         path.write_text(text, encoding='utf-8')
     text = path.read_text(encoding='utf-8-sig')
     edge_hook = 'af[#af+1] = LoadActor("./StreamEdgeFade.lua") -- SimplyLoveStreamEdgeFade'
+    mirror_hook = 'af[#af+1] = LoadActor("./StreamMirror.lua") -- SimplyLoveStreamMirror'
+    if mirror_hook not in text:
+        text = text.replace(edge_hook if edge_hook in text else 'return af',
+                            mirror_hook+'\n'+(edge_hook if edge_hook in text else 'return af'))
+        path.write_text(text, encoding='utf-8')
     if edge_hook not in text:
         text = text.replace('return af', edge_hook+'\nreturn af')
         path.write_text(text, encoding='utf-8')

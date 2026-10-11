@@ -15,6 +15,17 @@ Enable **Allow transparency** on an OBS game-capture source targeting
 `ITGmania.exe`. Check the premultiplied-alpha setting against the emitted capture.
 Disable chroma key when testing the native transparent output.
 
+In streaming mode, dance-single gameplay places the normal P1 field on the
+left and a rendering copy on the right. The copy rotates note/receptor arrows
+180 degrees without changing lane order or scrolling direction. It shares
+P1's judgments, combo, gift notes and readable name labels; P2 is not joined
+and gameplay is updated only once. Actual two-player play does not use this
+copy. `StreamMirror.lua` sets the two centers to 25% and 72% of window width.
+To capture the right copy, shift an existing P1 crop right by
+`stream_mirror_offset_pixels` from `/api/status`. At 1280 pixels wide this is
+602 pixels: a crop of left 120/right 639 becomes left 722/right 37, preserving
+the source width, OBS scale and placement.
+
 Start `Stream/start-api.cmd` for the local HTTP server on port 8765. Close the
 old OutFox API server first when switching to this runtime. The request format
 is unchanged:
