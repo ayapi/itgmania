@@ -384,13 +384,15 @@ local function railBounds()
  local left,right=SCREEN_WIDTH,0
  for _,p in pairs(byname) do
   local beat=p.ps:GetSongPosition():GetSongBeat()
-  local half=40*math.abs(p.actor:GetZoomX()*(p.field and p.field:GetZoomX() or 1))
+  -- The skin uses 64-unit arrows. Leave a small gap outside their edge
+  -- rather than reserving the old 80-unit box plus 12 units of padding.
+  local half=32*math.abs(p.actor:GetZoomX()*(p.field and p.field:GetZoomX() or 1))
   for col=1,4 do
    local x=screenPosition(p,beat,col)
    left=math.min(left,x-half) right=math.max(right,x+half)
   end
  end
- return left-12,right+12
+ return left-4,right+4
 end
 local function formatSender(name,measure,width)
  -- Split at UTF-8 character boundaries, including names without spaces.

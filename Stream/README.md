@@ -23,8 +23,10 @@ and gameplay is updated only once. Actual two-player play does not use this
 copy. `StreamMirror.lua` sets the two centers to 25% and 72% of window width.
 To capture the right copy, shift an existing P1 crop right by
 `stream_mirror_offset_pixels` from `/api/status`. At 1280 pixels wide this is
-602 pixels: a crop of left 120/right 639 becomes left 722/right 37, preserving
+602 pixels: a crop of left 120/right 663 becomes left 722/right 61, preserving
 the source width, OBS scale and placement.
+Gift labels sit four logical units outside the 64-unit arrow edge to keep
+the portrait capture narrow. The above crop is 497 by 720 pixels at 1280 by 720.
 
 Start `Stream/start-api.cmd` for the local HTTP server on port 8765. Close the
 old OutFox API server first when switching to this runtime. The request format
