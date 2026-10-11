@@ -16,6 +16,7 @@
 #include "PlayerNumber.h"
 #include "PlayerState.h"
 #include "RageUtil.h"
+#include "StreamMirror.h"
 #include "Style.h"
 #include "global.h"
 
@@ -100,7 +101,12 @@ void GhostArrowRow::DrawPrimitives() {
       GAMESTATE->GetCurrentStyle(m_pPlayerState->m_PlayerNumber);
   for (unsigned i = 0; i < m_Ghost.size(); i++) {
     const int c = pStyle->m_iColumnDrawOrder[i];
+    const float rotation = m_Ghost[c]->GetRotationZ();
+    if (g_StreamMirrorDrawing) {
+      m_Ghost[c]->SetRotationZ(rotation + 180.0f);
+    }
     m_Ghost[c]->Draw();
+    m_Ghost[c]->SetRotationZ(rotation);
   }
 }
 

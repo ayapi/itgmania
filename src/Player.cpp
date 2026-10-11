@@ -56,6 +56,7 @@
 #include "StageStats.h"
 #include "StatsManager.h"
 #include "Steps.h"
+#include "StreamMirror.h"
 #include "Style.h"
 #include "ThemeManager.h"
 #include "ThemeMetric.h"
@@ -3743,6 +3744,11 @@ bool Player::AddGiftTapNotes(const std::vector<std::pair<int, int>>& notes) {
 
 class LunaPlayer : public Luna<Player> {
  public:
+  static int DrawStreamMirror(T* p, lua_State* L) {
+    const StreamMirrorDrawScope scope;
+    p->Draw();
+    return 0;
+  }
   static int GetNoteData(T* p, lua_State* L) {
     const NoteData& data = p->GetNoteData();
     lua_newtable(L);
@@ -3838,6 +3844,7 @@ class LunaPlayer : public Luna<Player> {
   LunaPlayer() {
     ADD_METHOD(GetNoteData);
     ADD_METHOD(AddGiftTapNotes);
+    ADD_METHOD(DrawStreamMirror);
     ADD_METHOD(SetLife);
     ADD_METHOD(ChangeLife);
     ADD_METHOD(SetActorWithJudgmentPosition);

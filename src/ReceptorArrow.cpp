@@ -11,6 +11,7 @@
 #include "PlayerNumber.h"
 #include "PlayerState.h"
 #include "RageUtil.h"
+#include "StreamMirror.h"
 #include "Style.h"
 
 ReceptorArrow::ReceptorArrow() {
@@ -57,6 +58,14 @@ void ReceptorArrow::Update(float fDeltaTime) {
 }
 
 void ReceptorArrow::DrawPrimitives() {
+  if (g_StreamMirrorDrawing) {
+    // Re-drawing must not consume pressed state or emit another Press/Lift.
+    const float rotation = m_pReceptor->GetRotationZ();
+    m_pReceptor->SetRotationZ(rotation + 180.0f);
+    ActorFrame::DrawPrimitives();
+    m_pReceptor->SetRotationZ(rotation);
+    return;
+  }
   if (m_bWasPressed && !m_bIsPressed) {
     m_pReceptor->PlayCommand("Lift");
   } else if (!m_bWasPressed && m_bIsPressed) {

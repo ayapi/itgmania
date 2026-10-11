@@ -34,6 +34,7 @@
 #include "RageUtil.h"
 #include "ReceptorArrowRow.h"
 #include "Sprite.h"
+#include "StreamMirror.h"
 #include "Style.h"
 #include "Tween.h"
 #include "global.h"
@@ -1490,7 +1491,13 @@ void NoteDisplay::DrawActor(
         cache->m_fNoteColorTextureCoordSpacing[part] * color);
   }
 
+  if (g_StreamMirrorDrawing) {
+    pActor->SetRotationZ(pActor->GetRotationZ() + 180.0f);
+  }
   pActor->Draw();
+  if (g_StreamMirrorDrawing) {
+    pActor->SetRotationZ(pActor->GetRotationZ() - 180.0f);
+  }
 
   if (bNeedsTranslate) {
     DISPLAY->TexturePopMatrix();
