@@ -44,7 +44,12 @@ gifts with their sender and BPM delta. It is transparent
 outside the text/labels and hides when gameplay is inactive or the
 heartbeat is disconnected. Edit `Stream/overlay.html` to adjust appearance.
 
-Song information sits at the upper left. BPM sits above the receptors with
+Song information sits at the upper left, with a ♪ prefix on the title. Song
+information and sender names prioritize Google Fonts Noto Color Emoji, with
+Noto Sans JP for characters outside the emoji font. Loading these fonts needs
+an Internet connection; the browser uses its sans-serif fallback otherwise.
+Tempo gifts have no background box, and their deltas use the same Beast
+Machines font and red/green outline as BPM. BPM sits above the receptors with
 Beast Machines lettering: cyan at the chart BPM, red above it, green below it.
 Older tempo gifts appear above newer gifts; new rows slide in and push existing
 rows upwards in 160 ms. URL parameters `bpmX` and `bpmBottom` position this stack

@@ -3,11 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ITGmania 配信情報</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&amp;family=Noto+Sans+JP:wght@400;700&amp;display=swap">
 <style>
 /* BEGIN LOCAL BEAST FONT */
 /* END LOCAL BEAST FONT */
 :root{--bpm-x:436px;--bpm-bottom:717px;--bpm-color:#48d9ff}
-*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Yu Gothic UI","Meiryo",sans-serif}
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Noto Color Emoji","Noto Sans JP",sans-serif}
 [hidden]{display:none!important}
 main{position:relative;width:1080px;height:1920px}
 .song{position:absolute;left:40px;top:135px;width:490px;color:white;text-shadow:0 2px 3px #000,2px 0 2px #000,-2px 0 2px #000,0 -2px 2px #000}
@@ -16,8 +17,9 @@ h1{margin:0;font-size:40px;line-height:1.25;font-weight:700;overflow-wrap:anywhe
 .bpm{font-family:"Beast Machines",monospace;font-size:52px;line-height:1.5;letter-spacing:4px;color:#fff;-webkit-text-stroke:2px var(--bpm-color);paint-order:stroke fill;text-shadow:0 0 7px var(--bpm-color);font-variant-numeric:tabular-nums}
 .effects{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 94px);transform:translateX(-50%);width:760px}
 ul{padding:0;margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;list-style:none}
-li{display:flex;align-items:center;gap:16px;max-width:760px;padding:5px 10px;background:white;color:#000;border-radius:8px;font-size:34px;line-height:1.2;box-shadow:0 1px 4px #0003}
-.sender{min-width:0;max-width:610px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.delta{flex:none;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.positive{color:#c82727}.negative{color:#127a24}
+li{display:flex;align-items:center;gap:16px;max-width:760px;padding:0;color:#fff;font-size:34px;line-height:1.2}
+.sender{min-width:0;max-width:610px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 2px 3px #000,2px 0 2px #000,-2px 0 2px #000,0 -2px 2px #000}
+.delta{flex:none;font-family:"Beast Machines",monospace;font-weight:400;line-height:1.5;letter-spacing:3px;white-space:nowrap;font-variant-numeric:tabular-nums;color:#fff;-webkit-text-stroke:1.4px var(--delta-color);paint-order:stroke fill;text-shadow:0 0 5px var(--delta-color)}.positive{--delta-color:#ff4040}.negative{--delta-color:#39d638}
 </style>
 <main id="panel" hidden>
  <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
@@ -40,7 +42,8 @@ function render(status){
  const bpm=Number(status.effective_bpm),base=Number(status.base_bpm);
  document.getElementById('bpm').textContent='BPM'+(Number.isFinite(bpm)?number(bpm):'—');
  document.documentElement.style.setProperty('--bpm-color',bpm>base+.01?'#ff4040':bpm<base-.01?'#39d638':'#48d9ff');
- document.getElementById('title').textContent=status.song_title||status.song||'';
+ const title=status.song_title||status.song||'';
+ document.getElementById('title').textContent=title?'♪ '+title:'';
  document.getElementById('artist').textContent=status.song_artist||'';
  const effects=Array.isArray(status.active_tempo_effects)?status.active_tempo_effects:[];
  const before=new Map([...rows].map(([id,row])=>[id,row.getBoundingClientRect().top]));
