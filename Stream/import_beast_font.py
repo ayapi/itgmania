@@ -30,6 +30,8 @@ def label(font_data, text, color, size=74, tracking=None):
 
 
 def install(root, archive):
+    from prepare_stream_bpm_font import install as prepare_stream_bpm_font
+    prepare_stream_bpm_font(root, archive)
     with ZipFile(archive) as zip_file:
         data = zip_file.read('Beast Machines.TTF')
     theme = root / 'Themes/Simply Love'

@@ -20,13 +20,15 @@ left and a rendering copy on the right. The copy rotates note/receptor arrows
 180 degrees and reverses lane order without changing scrolling direction. It shares
 P1's judgments, combo, gift notes and readable name labels; P2 is not joined
 and gameplay is updated only once. Actual two-player play does not use this
-copy. `StreamMirror.lua` sets the two centers to 25% and 72% of window width.
-To capture the right copy, shift an existing P1 crop right by
-`stream_mirror_offset_pixels` from `/api/status`. At 1280 pixels wide this is
-602 pixels: a crop of left 120/right 663 becomes left 722/right 61, preserving
-the source width, OBS scale and placement.
-Gift labels sit four logical units outside the 64-unit arrow edge to keep
-the portrait capture narrow. The above crop is 497 by 720 pixels at 1280 by 720.
+copy. `StreamMirror.lua` sets the two centers to 25% and 72% of window width,
+with 80 logical units of headroom in the right copy. The player-facing field
+keeps its original Y position. At 1280 × 720, crop left 707/right 144 (429 ×
+720), then center this source horizontally in the portrait canvas. Move its
+OBS Y position up by 120 pixels times its scale to preserve receptor placement.
+Gift cards stack beside the face at ±110 logical units from the field center,
+three per side. Older cards sit above newer ones. They slide up in 160 ms on
+arrival/reflow; they never scroll with the notes. Thin leaders follow the live
+arrow position. Excess gift notes remain queued until one of six slots opens.
 
 Start `Stream/start-api.cmd` for the local HTTP server on port 8765. Close the
 old OutFox API server first when switching to this runtime. The request format
@@ -39,7 +41,7 @@ is unchanged:
 For OBS stream information, add a browser source with URL
 `http://127.0.0.1:8765/overlay` (portrait canvas: 1080 × 1920, 30 FPS).
 Keep the API bridge running. The page polls status four times per second,
-displays the effective BPM, song title/artist, and individually active tempo
+displays song title/artist and individually active tempo
 gifts with their sender and BPM delta. It is transparent
 outside the text/labels and hides when gameplay is inactive or the
 heartbeat is disconnected. Edit `Stream/overlay.html` to adjust appearance.
@@ -49,8 +51,10 @@ information and sender names prioritize Google Fonts Noto Color Emoji, with
 Noto Sans JP for characters outside the emoji font. Loading these fonts needs
 an Internet connection; the browser uses its sans-serif fallback otherwise.
 Tempo gifts have no background box, and their deltas use the same Beast
-Machines font and red/green outline as BPM. BPM sits above the receptors with
-Beast Machines lettering: cyan at the chart BPM, red above it, green below it.
+Machines font and red/green outline as BPM. The game itself renders BPM above
+the receptors, using Beast Machines lettering: cyan at the chart BPM, red above
+it, green below it. Its 12% pulse follows the song beat, including rate changes,
+stops and pauses; no extra timer or browser polling drives the animation.
 Older tempo gifts appear above newer gifts; new rows slide in and push existing
 rows upwards in 160 ms. URL parameters `bpmX` and `bpmBottom` position this stack
 in canvas pixels. Keep the browser source at 0,0 with scale 1. Match its BPM
@@ -58,6 +62,9 @@ anchor to the OBS game source after moving or resizing that source.
 `prepare_overlay_font.py --root <runtime> --archive <font ZIP>` embeds the user's
 local font in the runtime HTML. The repository contains no font data. Re-run
 after replacing the HTML template; the Beast font importer also runs this step.
+`prepare_stream_bpm_font.py --root <runtime> --archive <font ZIP>` generates
+three local bitmap fonts for native BPM. It needs Pillow, and runs automatically
+from the Beast font importer. Install these assets before loading GiftAPI.lua.
 Streaming judgment movement takes 30 ms on entry and 70 ms on exit, while
 retaining the 0.6-second readable hold. The installer applies this theme patch.
 

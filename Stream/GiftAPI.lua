@@ -52,6 +52,8 @@ config.sixteenth_backlog_threshold=math.max(1,math.floor(config.sixteenth_backlo
 
 local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}, results={}, players={}}
 local byname, containers, bubbleActors={}, {}, {}
+local bpmActor
+local nextLabelOrder=0
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
@@ -328,14 +330,17 @@ local function updatePointLimits()
  end
 end
 local function insertNotes()
- if #state.queue==0 or activeCount()>=config.max_active_arrows then return end
+ -- Six stationary cards fit beside the face; defer excess notes rather
+ -- than introducing real gift arrows whose sender cannot be displayed.
+ local capacity=PREFSMAN:GetPreference("StreamerMode") and math.min(6,config.max_active_arrows) or config.max_active_arrows
+ if #state.queue==0 or activeCount()>=capacity then return end
  local command=state.queue[1]
  local p=byname[command.player]
  local data=p.actor:GetNoteData()
  local index=occupancyIndex(data)
  local added={}
  local grid=giftGrid(queueCount())
- while command.remaining>0 and #added<4 and activeCount()+#added<config.max_active_arrows do
+ while command.remaining>0 and #added<4 and activeCount()+#added<capacity do
   local beat,col=slot(p,index,grid)
   if not beat then
    local r=resultById[command.event_id]
@@ -360,7 +365,10 @@ local function insertNotes()
   p.tracked=track(data,p.timing) p.pendingIndex=1
   p.pendingPoints=(p.pendingPoints or 0)+#added*THEME:GetMetric("ScoreKeeperNormal","PercentScoreWeightW1")
   updatePointLimits()
-  for _,note in ipairs(added) do state.active[#state.active+1]=note end
+  for _,note in ipairs(added) do
+   nextLabelOrder=nextLabelOrder+1 note.labelOrder=nextLabelOrder
+   state.active[#state.active+1]=note
+  end
   command.inserted=command.inserted+#added
   local r=resultById[command.event_id]
   if r then r.inserted=command.inserted end
@@ -412,33 +420,6 @@ local function formatSender(name,measure,width)
  end
  return table.concat(lines,"\n")
 end
-local function labelSlot(occupied,desired)
- -- Let a label enter partly clipped with its arrow. Keeping the whole
- -- box inside the bottom edge would bake in a permanent upward offset.
- local low,high=-30,SCREEN_HEIGHT+30
- for step=0,math.ceil(SCREEN_HEIGHT/46) do
-  for _,sign in ipairs({1,-1}) do
-   local y=desired+step*46*sign
-   if y>=low and y<=high then
-    local free=true
-    for _,other in ipairs(occupied) do if math.abs(y-other)<45 then free=false break end end
-    if free then occupied[#occupied+1]=y return y end
-   end
-  end
- end
-end
-local function labelPosition(note,occupied,arrowY,right)
- if note.labelOffset==nil then
-  if SCREEN_WIDTH-right-8<66 then return end
-  local y=labelSlot(occupied,arrowY)
-  if not y then return end
-  -- Allocate once. A departing neighbour, a new gift, or a screen edge
-  -- must never cause an existing name to jump to another slot.
-  note.labelOffset=y-arrowY
-  note.labelEdge=right
- end
- return arrowY+note.labelOffset,note.labelEdge
-end
 local function drawLabelTarget(actor,layout,targetX)
  local dx,dy=targetX-layout.edge,layout.arrowY-layout.y
  actor:GetChild("Leader"):xy((layout.edge+targetX)/2-layout.x,dy/2)
@@ -447,8 +428,6 @@ local function drawLabelTarget(actor,layout,targetX)
 end
 local function updateBubbles()
  local used,visible={},{}
- local _,right=railBounds()
- local occupied={}
  for _,note in ipairs(state.active) do if not note.done and note.bubble then used[note.bubble]=true end end
  for _,note in ipairs(state.active) do
   if not note.done then
@@ -466,29 +445,44 @@ local function updateBubbles()
      a:visible(false)
      local px,py,offset=screenPosition(p,note.beat,note.column)
      local alpha=ArrowEffects.GetAlpha(p.ps,note.column,offset)
-     if py>=0 and py<=SCREEN_HEIGHT and alpha>0 then
+     local streamOffsetY=SL.StreamMirrorOffsetY or 0
+     if py>=0 and py<=SCREEN_HEIGHT-streamOffsetY and alpha>0 then
       visible[#visible+1]={note=note,actor=a,p=p,x=px,y=py}
      end
     end
    end
   end
  end
- table.sort(visible,function(a,b) if a.y==b.y then return a.note.column<b.note.column end return a.y<b.y end)
- -- Reserve established labels before allocating space for new arrivals.
+ local sides={{},{}}
  for _,item in ipairs(visible) do
-  if item.note.labelOffset~=nil then occupied[#occupied+1]=item.y+item.note.labelOffset end
+  if item.note.labelSide then table.insert(sides[item.note.labelSide],item) end
  end
  for _,item in ipairs(visible) do
-  -- A single rail on the right keeps the stream crop narrow. All gifters
-  -- keep the same label size; never spill labels onto the left or notes.
+  if not item.note.labelSide then
+   local side=#sides[1]<#sides[2] and 1 or #sides[2]<#sides[1] and 2 or (item.note.column>=3 and 1 or 2)
+   item.note.labelSide=side
+   table.insert(sides[side],item)
+  end
+ end
+ -- Stable insertion order: names never follow note scrolling. Only a
+ -- new/finished neighbour changes their slot, with a short slide tween.
+ for side,items in ipairs(sides) do
+  table.sort(items,function(a,b) return a.note.labelOrder<b.note.labelOrder end)
+  for rank,item in ipairs(items) do
   local width=66
-  local y,edge=labelPosition(item.note,occupied,item.y,right)
-  if y then
-   local x=edge+width/2
+   local y=20-(#items-rank)*36
+   local x=item.p.actor:GetX()+(side==1 and -110 or 110)
+   local edge=x+(side==1 and width/2 or -width/2)
    local half=25*math.abs(item.p.actor:GetZoomX()*(item.p.field and item.p.field:GetZoomX() or 1))
-   local targetX=item.x+half
+   local targetX=item.x+(side==1 and -half or half)
    local a=item.actor
-   a:xy(x,y):visible(true)
+   if item.note.labelY==nil then
+    a:finishtweening():xy(x,y+8):diffusealpha(0):decelerate(0.16):y(y):diffusealpha(1)
+   elseif item.note.labelY~=y then
+    a:stoptweening():decelerate(0.16):y(y)
+   end
+   item.note.labelY=y
+   a:visible(true)
    local text=a:GetChild("Sender")
    if not item.note.formattedName then
     text:maxwidth(0)
@@ -498,8 +492,8 @@ local function updateBubbles()
     end,width-6)
    end
    text:settext(item.note.formattedName):maxwidth((width-6)/0.7)
-   item.note.labelGeometry={x=x,y=y,edge=edge,arrowY=item.y,targetX=targetX,
-    mirrorTargetX=2*item.p.actor:GetX()-item.x+half}
+   item.note.labelGeometry={x=x,y=a:GetY(),edge=edge,arrowY=item.y,targetX=targetX,
+    mirrorTargetX=2*item.p.actor:GetX()-item.x+(side==1 and -half or half)}
    drawLabelTarget(a,item.note.labelGeometry,targetX)
   end
  end
@@ -571,8 +565,8 @@ end
 local af=Def.ActorFrame{
  Name="SimplyLoveGiftAPI",
  StreamMirrorDrawCommand=function(self)
-  -- Names remain on the right and readable. Only their leader endpoints
-  -- move to the opposite lane, then restore for the next normal P1 draw.
+  -- Stationary cards on both sides share the stream copy's transform;
+  -- only the thin leader endpoints follow reflected note positions.
   for _,note in ipairs(state.active) do
    local actor=note.bubble and bubbleActors[note.bubble]
    local layout=note.labelGeometry
@@ -582,6 +576,7 @@ local af=Def.ActorFrame{
     drawLabelTarget(actor,layout,layout.targetX)
    end
   end
+  if bpmActor and bpmActor:GetVisible() then bpmActor:Draw() end
  end,
  OnCommand=function(self)
   initialize()
@@ -613,6 +608,21 @@ local af=Def.ActorFrame{
      performance.max_insert_ms=math.max(performance.max_insert_ms,(GetTimeSinceStart()-started)*1000)
     end
     measured("max_tempo_ms",function() updateTempo(now) end)
+    if bpmActor then
+     local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
+     bpmActor:visible(ready and master~=nil)
+     if master then
+      local phase=beat-math.floor(beat)
+      local pulse=1+0.12*math.exp(-phase*12)
+      bpmActor:xy(master.actor:GetX(),68):zoom(pulse)
+      local bpm=currentBpm*effectiveRate
+      local color=bpm>currentBpm+0.01 and "Up" or bpm<currentBpm-0.01 and "Down" or "Base"
+      local value=string.format("%.1f",bpm):gsub("%.0$","")
+      for _,name in ipairs({"Base","Up","Down"}) do
+       bpmActor:GetChild(name):visible(name==color):settext("BPM"..value)
+      end
+     end
+    end
     measured("max_points_ms",updatePointLimits)
     measured("max_bubbles_ms",updateBubbles)
     if now-lastStatus>=0.1 then
@@ -650,9 +660,22 @@ local function roundedBubbleVertices(width,height,radius)
  vertices[#vertices+1]=vertices[2]
  return vertices
 end
+local bpm=Def.ActorFrame{
+ Name="StreamBPM",
+ InitCommand=function(self) bpmActor=self self:visible(false) end,
+}
+for _,name in ipairs({"Base","Up","Down"}) do
+ local hasFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream BPM "..name..".ini")
+ bpm[#bpm+1]=LoadFont(hasFont and "Stream BPM "..name or "Common Normal")..{
+  Name=name,
+  InitCommand=function(self) self:zoom(0.8):diffuse(1,1,1,1):shadowlength(0):visible(false) end,
+ }
+end
+af[#af+1]=bpm
 for i=1,config.max_active_arrows do
  local index=i
  af[#af+1]=Def.ActorFrame{
+  Name="GiftBubble"..index,
   InitCommand=function(self) bubbleActors[index]=self self:visible(false) end,
   Def.Quad{Name="Leader",InitCommand=function(self) self:diffuse(1,1,1,1) end},
   Def.Quad{Name="Target",InitCommand=function(self) self:zoomto(3,3):diffuse(1,1,1,1) end},

@@ -7,14 +7,12 @@
 <style>
 /* BEGIN LOCAL BEAST FONT */
 /* END LOCAL BEAST FONT */
-:root{--bpm-x:436px;--bpm-bottom:717px;--bpm-color:#48d9ff}
+:root{--bpm-x:540px;--bpm-bottom:717px}
 *{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Noto Color Emoji","Noto Sans JP",sans-serif;font-weight:700}
 [hidden]{display:none!important}
 main{position:relative;width:1080px;height:1920px}
 .song{position:absolute;left:40px;top:135px;width:490px;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000,0 -2px 0 #000}
 h1{margin:0;font-size:40px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.artist{margin-top:6px;font-size:32px;line-height:1.3;overflow-wrap:anywhere}
-.tempo{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom));transform:translateX(-50%);white-space:nowrap}
-.bpm{font-family:"Beast Machines",monospace;font-weight:400;font-size:52px;line-height:1.5;letter-spacing:4px;color:#fff;-webkit-text-stroke:2px var(--bpm-color);paint-order:stroke fill;text-shadow:0 0 7px var(--bpm-color);font-variant-numeric:tabular-nums}
 .effects{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 94px);transform:translateX(-50%);width:760px}
 ul{padding:0;margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;list-style:none}
 li{display:flex;align-items:center;gap:16px;max-width:760px;padding:0;color:#fff;font-size:34px;line-height:1.2}
@@ -24,7 +22,6 @@ li{display:flex;align-items:center;gap:16px;max-width:760px;padding:0;color:#fff
 <main id="panel" hidden>
  <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
  <section class="effects"><ul id="effects"></ul></section>
- <div class="tempo"><div class="bpm" id="bpm">BPM—</div></div>
 </main>
 <script>
 'use strict';
@@ -39,9 +36,6 @@ function render(status){
  panel.hidden=!(status.ready && status.connected!==false);
  if(panel.hidden){list.replaceChildren();rows.clear();return;}
  if(session!==status.session){list.replaceChildren();rows.clear();session=status.session;}
- const bpm=Number(status.effective_bpm),base=Number(status.base_bpm);
- document.getElementById('bpm').textContent='BPM'+(Number.isFinite(bpm)?number(bpm):'—');
- document.documentElement.style.setProperty('--bpm-color',bpm>base+.01?'#ff4040':bpm<base-.01?'#39d638':'#48d9ff');
  const title=status.song_title||status.song||'';
  document.getElementById('title').textContent=title?'♪ '+title:'';
  document.getElementById('artist').textContent=status.song_artist||'';
