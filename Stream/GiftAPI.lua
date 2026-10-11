@@ -437,6 +437,12 @@ local function labelPosition(note,occupied,arrowY,right)
  end
  return arrowY+note.labelOffset,note.labelEdge
 end
+local function drawLabelTarget(actor,layout,targetX)
+ local dx,dy=targetX-layout.edge,layout.arrowY-layout.y
+ actor:GetChild("Leader"):xy((layout.edge+targetX)/2-layout.x,dy/2)
+  :zoomto(math.sqrt(dx*dx+dy*dy),1):rotationz(math.atan2(dy,dx)*180/math.pi)
+ actor:GetChild("Target"):xy(targetX-layout.x,dy)
+end
 local function updateBubbles()
  local used,visible={},{}
  local _,right=railBounds()
@@ -479,8 +485,6 @@ local function updateBubbles()
    local x=edge+width/2
    local half=25*math.abs(item.p.actor:GetZoomX()*(item.p.field and item.p.field:GetZoomX() or 1))
    local targetX=item.x+half
-   local dx,dy=targetX-edge,item.y-y
-   local angle=math.atan2(dy,dx)*180/math.pi
    local a=item.actor
    a:xy(x,y):visible(true)
    local text=a:GetChild("Sender")
@@ -492,8 +496,9 @@ local function updateBubbles()
     end,width-6)
    end
    text:settext(item.note.formattedName):maxwidth((width-6)/0.7)
-   a:GetChild("Leader"):xy((edge+targetX)/2-x,dy/2):zoomto(math.sqrt(dx*dx+dy*dy),1):rotationz(angle)
-   a:GetChild("Target"):xy(targetX-x,item.y-y)
+   item.note.labelGeometry={x=x,y=y,edge=edge,arrowY=item.y,targetX=targetX,
+    mirrorTargetX=2*item.p.actor:GetX()-item.x+half}
+   drawLabelTarget(a,item.note.labelGeometry,targetX)
   end
  end
  for i=#state.active,1,-1 do if state.active[i].done then table.remove(state.active,i) end end
@@ -563,6 +568,19 @@ local function finish(message)
 end
 local af=Def.ActorFrame{
  Name="SimplyLoveGiftAPI",
+ StreamMirrorDrawCommand=function(self)
+  -- Names remain on the right and readable. Only their leader endpoints
+  -- move to the opposite lane, then restore for the next normal P1 draw.
+  for _,note in ipairs(state.active) do
+   local actor=note.bubble and bubbleActors[note.bubble]
+   local layout=note.labelGeometry
+   if not note.done and actor and actor:GetVisible() and layout then
+    drawLabelTarget(actor,layout,layout.mirrorTargetX)
+    actor:Draw()
+    drawLabelTarget(actor,layout,layout.targetX)
+   end
+  end
+ end,
  OnCommand=function(self)
   initialize()
   lastPoll=0 lastStatus=0

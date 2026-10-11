@@ -17,7 +17,7 @@ Disable chroma key when testing the native transparent output.
 
 In streaming mode, dance-single gameplay places the normal P1 field on the
 left and a rendering copy on the right. The copy rotates note/receptor arrows
-180 degrees without changing lane order or scrolling direction. It shares
+180 degrees and reverses lane order without changing scrolling direction. It shares
 P1's judgments, combo, gift notes and readable name labels; P2 is not joined
 and gameplay is updated only once. Actual two-player play does not use this
 copy. `StreamMirror.lua` sets the two centers to 25% and 72% of window width.

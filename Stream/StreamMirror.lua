@@ -1,4 +1,4 @@
--- A render-only copy of P1: note directions invert, lanes and time do not.
+-- A render-only copy of P1: invert directions and lane order, preserve time.
 if not PREFSMAN:GetPreference("StreamerMode") then return Def.Actor{} end
 local player, gifts
 local warned=false
@@ -26,7 +26,7 @@ return Def.ActorFrame{
    if not player then return end
    local ok,error=pcall(function()
     player:DrawStreamMirror()
-    if gifts then gifts:Draw() end
+    if gifts then gifts:playcommand("StreamMirrorDraw") end
    end)
    if not ok then
     if not warned then Trace("StreamMirror: "..tostring(error)) warned=true end
