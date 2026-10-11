@@ -473,12 +473,12 @@ local function updateBubbles()
    item.note.formattedName=formatSender(item.note.sender,function(value)
     text:settext(value)
     return text:GetWidth()*0.7
-   end,64)
-   text:settext(item.note.formattedName):maxwidth(64/0.7)
-   -- One logical pixel of padding on each edge; short names and one-line
+   end,70)
+   text:settext(item.note.formattedName):maxwidth(70/0.7)
+   -- Three logical pixels of padding on each edge; short names and one-line
    -- names no longer reserve a full two-line card.
-   item.note.labelWidth=math.min(66,math.max(12,text:GetWidth()*0.7+2))
-   item.note.labelHeight=math.max(12,text:GetHeight()*0.7+2)
+   item.note.labelWidth=math.min(76,math.max(16,text:GetWidth()*0.7+6))
+   item.note.labelHeight=math.max(16,text:GetHeight()*0.7+6)
    local vertices=roundedBubbleVertices(item.note.labelWidth,item.note.labelHeight,3)
    item.actor:GetChild("Background"):SetNumVertices(#vertices):SetVertices(vertices)
   end
@@ -499,7 +499,9 @@ local function updateBubbles()
   for rank=#items,1,-1 do
    local item=items[rank]
    local width=item.note.labelWidth
-   local x=item.p.actor:GetX()+(side==1 and -110 or 110)
+   -- Widen towards BPM while keeping the same outer capture boundary.
+   local distance=143-width/2
+   local x=item.p.actor:GetX()+(side==1 and -distance or distance)
    local edge=x+(side==1 and width/2 or -width/2)
    local half=25*math.abs(item.p.actor:GetZoomX()*(item.p.field and item.p.field:GetZoomX() or 1))
    local targetX=item.x+(side==1 and -half or half)

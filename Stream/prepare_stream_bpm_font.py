@@ -23,7 +23,7 @@ def install(root, archive):
         prefix = 'Stream BPM '+name
         atlas.save(directory / f'{prefix} {len(characters)}x1 (doubleres).png')
         (directory / (prefix+'.ini')).write_text(
-            '[Char Widths]\nline 0='+characters+'\nDefaultWidth=30\n'+
+            '[Char Widths]\nline 0='+characters+'\nDefaultWidth=30\nAdvanceExtraPixels=-3\n'+
             '\n'.join(widths)+'\n', encoding='utf-8')
 
 
