@@ -288,7 +288,9 @@ end
 local function giftGrid(backlog)
  return backlog>=config.sixteenth_backlog_threshold and 0.25 or 0.5
 end
-local function slot(p,index,grid)
+-- P1 columns 3/4 become down/left in the reversed stream copy.
+local function bubbleSide(column) return column>=3 and 1 or 2 end
+local function slot(p,index,grid,sideCounts)
  grid=grid or 0.5 -- Eighth notes normally; sixteenths only for a large backlog.
  local position=p.ps:GetSongPosition()
  local beat=position:GetSongBeat()
@@ -305,7 +307,7 @@ local function slot(p,index,grid)
    if feet<2 then
    for c=0,3 do
     local col=(startcol+c-1)%4+1
-    if not occupied[col] then
+    if not occupied[col] and (not sideCounts or sideCounts[bubbleSide(col)]<3) then
     local _,y=geometry(p,b,col)
     local screenY=p.actor:GetY()+y*p.actor:GetZoomY()
     if screenY>=bottom then return b,col end
@@ -340,10 +342,18 @@ local function insertNotes()
  local data=p.actor:GetNoteData()
  local index=occupancyIndex(data)
  local added={}
+ local sideCounts
+ if PREFSMAN:GetPreference("StreamerMode") then
+  sideCounts={0,0}
+  for _,note in ipairs(state.active) do
+   if not note.done then local side=bubbleSide(note.column) sideCounts[side]=sideCounts[side]+1 end
+  end
+ end
  local grid=giftGrid(queueCount())
  while command.remaining>0 and #added<4 and activeCount()+#added<capacity do
-  local beat,col=slot(p,index,grid)
+  local beat,col=slot(p,index,grid,sideCounts)
   if not beat then
+   if sideCounts and (sideCounts[1]>=3 or sideCounts[2]>=3) then break end
    local r=resultById[command.event_id]
    if r then r.state="partial" r.reason="No room before the end of the chart" end
    table.remove(state.queue,1) break
@@ -353,6 +363,7 @@ local function insertNotes()
   index.rows[row]=index.rows[row] or {occupied={},feet={}}
   index.rows[row].occupied[col]=true index.rows[row].feet[col]=true
   added[#added+1]={beat=beat,column=col,player=command.player,sender=command.sender,event_id=command.event_id,done=false}
+  if sideCounts then local side=bubbleSide(col) sideCounts[side]=sideCounts[side]+1 end
   command.remaining=command.remaining-1
  end
  if #added>0 then
@@ -475,7 +486,7 @@ local function updateBubbles()
  end
  for _,item in ipairs(visible) do
   if not item.note.labelSide then
-   local side=#sides[1]<#sides[2] and 1 or #sides[2]<#sides[1] and 2 or (item.note.column>=3 and 1 or 2)
+   local side=bubbleSide(item.note.column)
    item.note.labelSide=side
    table.insert(sides[side],item)
   end

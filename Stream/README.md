@@ -25,7 +25,8 @@ with both receptor rows at the same Y position. At 1280 × 720, crop left
 707/right 144 (429 × 720), then center this source horizontally in the portrait
 canvas. No vertical offset is applied to the stream copy.
 Gift cards stack beside the face at ±110 logical units from the field center,
-three per side. Older cards sit above newer ones. They slide up in 160 ms on
+three per side. The stream's left/down arrows always use left cards; up/right
+use right cards. Older cards sit above newer ones. They slide up in 160 ms on
 arrival/reflow; they never scroll with the notes. Thin leaders follow the live
 arrow position. Excess gift notes remain queued until one of six slots opens.
 The newest cards align with BPM at Y=68, immediately above the receptors.
