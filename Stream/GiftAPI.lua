@@ -54,6 +54,7 @@ local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}
 local byname, containers, bubbleActors={}, {}, {}
 local bpmActor
 local nextLabelOrder=0
+local roundedBubbleVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
@@ -455,6 +456,21 @@ local function updateBubbles()
  end
  local sides={{},{}}
  for _,item in ipairs(visible) do
+  if not item.note.formattedName then
+   local text=item.actor:GetChild("Sender")
+   text:maxwidth(0)
+   item.note.formattedName=formatSender(item.note.sender,function(value)
+    text:settext(value)
+    return text:GetWidth()*0.7
+   end,64)
+   text:settext(item.note.formattedName):maxwidth(64/0.7)
+   -- One logical pixel of padding on each edge; short names and one-line
+   -- names no longer reserve a full two-line card.
+   item.note.labelWidth=math.min(66,math.max(12,text:GetWidth()*0.7+2))
+   item.note.labelHeight=math.max(12,text:GetHeight()*0.7+2)
+   local vertices=roundedBubbleVertices(item.note.labelWidth,item.note.labelHeight,3)
+   item.actor:GetChild("Background"):SetNumVertices(#vertices):SetVertices(vertices)
+  end
   if item.note.labelSide then table.insert(sides[item.note.labelSide],item) end
  end
  for _,item in ipairs(visible) do
@@ -468,9 +484,10 @@ local function updateBubbles()
  -- new/finished neighbour changes their slot, with a short slide tween.
  for side,items in ipairs(sides) do
   table.sort(items,function(a,b) return a.note.labelOrder<b.note.labelOrder end)
-  for rank,item in ipairs(items) do
-  local width=66
-   local y=20-(#items-rank)*36
+  local y=68
+  for rank=#items,1,-1 do
+   local item=items[rank]
+   local width=item.note.labelWidth
    local x=item.p.actor:GetX()+(side==1 and -110 or 110)
    local edge=x+(side==1 and width/2 or -width/2)
    local half=25*math.abs(item.p.actor:GetZoomX()*(item.p.field and item.p.field:GetZoomX() or 1))
@@ -483,18 +500,10 @@ local function updateBubbles()
    end
    item.note.labelY=y
    a:visible(true)
-   local text=a:GetChild("Sender")
-   if not item.note.formattedName then
-    text:maxwidth(0)
-    item.note.formattedName=formatSender(item.note.sender,function(value)
-     text:settext(value)
-     return text:GetWidth()*0.7
-    end,width-6)
-   end
-   text:settext(item.note.formattedName):maxwidth((width-6)/0.7)
    item.note.labelGeometry={x=x,y=a:GetY(),edge=edge,arrowY=item.y,targetX=targetX,
     mirrorTargetX=2*item.p.actor:GetX()-item.x+(side==1 and -half or half)}
    drawLabelTarget(a,item.note.labelGeometry,targetX)
+   if rank>1 then y=y-item.note.labelHeight/2-items[rank-1].note.labelHeight/2-2 end
   end
  end
  for i=#state.active,1,-1 do if state.active[i].done then table.remove(state.active,i) end end
@@ -644,7 +653,7 @@ local af=Def.ActorFrame{
  end,
  OffCommand=function(self) if initialized then finish("Gameplay ended") end end,
 }
-local function roundedBubbleVertices(width,height,radius)
+roundedBubbleVertices=function(width,height,radius)
  local white={1,1,1,1}
  local vertices={{{0,0,0},white}}
  local corners={{width/2-radius,-height/2+radius,-90},

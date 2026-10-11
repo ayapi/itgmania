@@ -29,6 +29,8 @@ Gift cards stack beside the face at ±110 logical units from the field center,
 three per side. Older cards sit above newer ones. They slide up in 160 ms on
 arrival/reflow; they never scroll with the notes. Thin leaders follow the live
 arrow position. Excess gift notes remain queued until one of six slots opens.
+The newest cards align with BPM at Y=68, immediately above the receptors.
+Cards fit their one/two-line text with one unit of padding and two-unit gaps.
 
 Start `Stream/start-api.cmd` for the local HTTP server on port 8765. Close the
 old OutFox API server first when switching to this runtime. The request format
