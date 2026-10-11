@@ -4,51 +4,75 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ITGmania 配信情報</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;background:transparent;color:#fff;font-family:"Yu Gothic UI","Meiryo",sans-serif}
+/* BEGIN LOCAL BEAST FONT */
+/* END LOCAL BEAST FONT */
+:root{--bpm-x:436px;--bpm-bottom:717px;--bpm-color:#48d9ff}
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Yu Gothic UI","Meiryo",sans-serif}
 [hidden]{display:none!important}
-main{padding:20px 24px;background:rgba(15,15,20,.86);border-radius:16px}
-header{display:flex;gap:30px;align-items:center}
-.tempo{flex:none;min-width:170px}.caption{font-size:20px;color:#ddd}.bpm{font-size:56px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.song{min-width:0}h1{margin:0;font-size:32px;line-height:1.3;overflow-wrap:anywhere}.artist{margin-top:6px;font-size:24px;color:#ddd;overflow-wrap:anywhere}
-.effects-heading{margin:16px 0 8px;font-size:20px;color:#ddd}
-ul{padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px;list-style:none}
-li{display:flex;gap:12px;align-items:center;padding:8px 12px;background:rgba(255,255,255,.12);border-radius:8px;font-size:23px}
-.sender{overflow-wrap:anywhere}.delta{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.positive{color:#ffda72}.negative{color:#82dfff}.remaining{font-size:18px;color:#ccc;white-space:nowrap}
-.empty{font-size:22px;color:#ccc}
+main{position:relative;width:1080px;height:1920px}
+.song{position:absolute;left:40px;top:135px;width:490px;color:white;text-shadow:0 2px 3px #000,2px 0 2px #000,-2px 0 2px #000,0 -2px 2px #000}
+h1{margin:0;font-size:40px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.artist{margin-top:6px;font-size:32px;line-height:1.3;overflow-wrap:anywhere}
+.tempo{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom));transform:translateX(-50%);white-space:nowrap}
+.bpm{font-family:"Beast Machines",monospace;font-size:52px;line-height:1.5;letter-spacing:4px;color:#fff;-webkit-text-stroke:2px var(--bpm-color);paint-order:stroke fill;text-shadow:0 0 7px var(--bpm-color);font-variant-numeric:tabular-nums}
+.effects{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 94px);transform:translateX(-50%);width:760px}
+ul{padding:0;margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;list-style:none}
+li{display:flex;align-items:center;gap:16px;max-width:760px;padding:5px 10px;background:white;color:#000;border-radius:8px;font-size:34px;line-height:1.2;box-shadow:0 1px 4px #0003}
+.sender{min-width:0;max-width:610px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.delta{flex:none;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.positive{color:#c82727}.negative{color:#127a24}
 </style>
 <main id="panel" hidden>
- <header><div class="tempo"><div class="caption">現在のBPM</div><div class="bpm" id="bpm">—</div></div>
- <div class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></div></header>
- <div class="effects-heading">適用中のBPMギフト</div>
- <ul id="effects"></ul><div class="empty" id="empty">なし</div>
+ <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
+ <section class="effects"><ul id="effects"></ul></section>
+ <div class="tempo"><div class="bpm" id="bpm">BPM—</div></div>
 </main>
 <script>
 'use strict';
-const panel=document.getElementById('panel');
-const number=value=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1}).format(value);
+const panel=document.getElementById('panel'),list=document.getElementById('effects');
+const rows=new Map();let session;
+const number=value=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1,useGrouping:false}).format(value);
+const params=new URLSearchParams(location.search);
+for(const [key,css] of [['bpmX','--bpm-x'],['bpmBottom','--bpm-bottom']]){
+ const value=Number(params.get(key));if(params.has(key)&&Number.isFinite(value))document.documentElement.style.setProperty(css,value+'px');
+}
 function render(status){
  panel.hidden=!(status.ready && status.connected!==false);
- if(panel.hidden)return;
- document.getElementById('bpm').textContent=Number.isFinite(status.effective_bpm)?number(status.effective_bpm):'—';
+ if(panel.hidden){list.replaceChildren();rows.clear();return;}
+ if(session!==status.session){list.replaceChildren();rows.clear();session=status.session;}
+ const bpm=Number(status.effective_bpm),base=Number(status.base_bpm);
+ document.getElementById('bpm').textContent='BPM'+(Number.isFinite(bpm)?number(bpm):'—');
+ document.documentElement.style.setProperty('--bpm-color',bpm>base+.01?'#ff4040':bpm<base-.01?'#39d638':'#48d9ff');
  document.getElementById('title').textContent=status.song_title||status.song||'';
  document.getElementById('artist').textContent=status.song_artist||'';
  const effects=Array.isArray(status.active_tempo_effects)?status.active_tempo_effects:[];
- const list=document.getElementById('effects');
- const rows=effects.map(effect=>{
-  const row=document.createElement('li');
-  const name=document.createElement('span');name.className='sender';name.textContent=effect.sender||'名前なし';
-  const delta=document.createElement('span');const value=Number(effect.bpm_delta)||0;
-  delta.className='delta '+(value>=0?'positive':'negative');delta.textContent=(value>=0?'+':'')+number(value)+' BPM';
-  const remaining=document.createElement('span');remaining.className='remaining';remaining.textContent='残り'+Math.ceil(Math.max(0,Number(effect.remaining_seconds)||0))+'秒';
-  row.append(name,delta,remaining);return row;
- });
- list.replaceChildren(...rows);document.getElementById('empty').hidden=rows.length>0;
+ const before=new Map([...rows].map(([id,row])=>[id,row.getBoundingClientRect().top]));
+ const alive=new Set(),added=new Set();
+ for(const [index,effect] of effects.entries()){
+  const id=effect.event_id||('fallback-'+index+'-'+effect.sender);alive.add(id);
+  let row=rows.get(id);
+  if(!row){row=document.createElement('li');row.dataset.eventId=id;
+   const name=document.createElement('span');name.className='sender';
+   const delta=document.createElement('span');delta.className='delta';
+   row.append(name,delta);rows.set(id,row);list.append(row);added.add(id);
+  }
+  const name=row.querySelector('.sender');name.textContent=effect.sender||'名前なし';
+  const delta=row.querySelector('.delta'),value=Number(effect.bpm_delta)||0;
+  delta.className='delta '+(value>=0?'positive':'negative');delta.textContent=(value>=0?'+':'')+number(value);
+ }
+ for(const [id,row] of rows)if(!alive.has(id)){row.remove();rows.delete(id);}
+ // Preserve event DOM nodes and arrival order between polls. Anchoring the
+ // list at the bottom lets new arrivals push older names upwards.
+ for(const [id,row] of rows){
+  const shift=added.has(id)?32:(before.get(id)-row.getBoundingClientRect().top);
+  if(Math.abs(shift)>.5){
+   for(const animation of row.getAnimations())animation.cancel();
+   row.animate([{transform:`translateY(${shift}px)`,opacity:added.has(id)?0:1},{transform:'translateY(0)',opacity:1}],{duration:160,easing:'cubic-bezier(.18,.9,.3,1)'});
+  }
+ }
 }
 async function poll(){
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),2000);
  try{const response=await fetch('/api/status',{cache:'no-store',signal:controller.signal});
   if(!response.ok)throw new Error('status');render(await response.json());
- }catch{panel.hidden=true;}finally{clearTimeout(timeout);setTimeout(poll,250);}
+ }catch{panel.hidden=true;list.replaceChildren();rows.clear();}finally{clearTimeout(timeout);setTimeout(poll,250);}
 }
 poll();
 </script>

@@ -37,12 +37,24 @@ is unchanged:
 - `GET /api/status` and `GET /api/events/<event_id>` report readiness and results.
 
 For OBS stream information, add a browser source with URL
-`http://127.0.0.1:8765/overlay` (initial canvas: 1020 × 380, 30 FPS).
+`http://127.0.0.1:8765/overlay` (portrait canvas: 1080 × 1920, 30 FPS).
 Keep the API bridge running. The page polls status four times per second,
 displays the effective BPM, song title/artist, and individually active tempo
-gifts with their sender, BPM delta, and remaining seconds. It is transparent
-outside the information panel and hides when gameplay is inactive or the
+gifts with their sender and BPM delta. It is transparent
+outside the text/labels and hides when gameplay is inactive or the
 heartbeat is disconnected. Edit `Stream/overlay.html` to adjust appearance.
+
+Song information sits at the upper left. BPM sits above the receptors with
+Beast Machines lettering: cyan at the chart BPM, red above it, green below it.
+Older tempo gifts appear above newer gifts; new rows slide in and push existing
+rows upwards in 160 ms. URL parameters `bpmX` and `bpmBottom` position this stack
+in canvas pixels. Keep the browser source at 0,0 with scale 1. Match its BPM
+anchor to the OBS game source after moving or resizing that source.
+`prepare_overlay_font.py --root <runtime> --archive <font ZIP>` embeds the user's
+local font in the runtime HTML. The repository contains no font data. Re-run
+after replacing the HTML template; the Beast font importer also runs this step.
+Streaming judgment movement takes 30 ms on entry and 70 ms on exit, while
+retaining the 0.6-second readable hold. The installer applies this theme patch.
 
 The status response adds `song_title`, `song_artist`, and
 `active_tempo_effects`, a list of `{event_id, sender, bpm_delta,

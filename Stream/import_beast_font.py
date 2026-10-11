@@ -97,6 +97,10 @@ def install(root, archive):
     number.thumbnail((400,100), Image.Resampling.LANCZOS)
     preview.alpha_composite(number, ((440-number.width)//2,7*148+20))
     preview.save(root/'Stream/beast-font-preview.png')
+    from compact_judgments import install as compact_judgments
+    from prepare_overlay_font import install as prepare_overlay_font
+    compact_judgments(root)
+    if (root/'Stream/overlay.html').exists():prepare_overlay_font(root,archive)
     print('All judgments use point size', judgment_size, 'with 4px glyph spacing')
 
 

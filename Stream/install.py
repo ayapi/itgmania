@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse, configparser, json, re, shutil
 from quiet_menus import install as quiet_menus
+from compact_judgments import install as compact_judgments
 
 def install(root):
     root = root.resolve()
@@ -91,6 +92,7 @@ end
     with path.open('w',encoding='utf-8') as handle:cfg.write(handle,space_around_delimiters=False)
     (root/'Portable.ini').touch(exist_ok=True)
     quiet_menus(root)
+    compact_judgments(root)
     (root/'start-game.cmd').write_bytes(
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_obs_background.py\r\n'
