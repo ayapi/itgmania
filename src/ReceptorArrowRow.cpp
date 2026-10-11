@@ -11,6 +11,7 @@
 #include "PlayerState.h"
 #include "RageUtil.h"
 #include "ReceptorArrow.h"
+#include "StreamMirror.h"
 #include "Style.h"
 #include "global.h"
 
@@ -94,7 +95,12 @@ void ReceptorArrowRow::DrawPrimitives() {
       GAMESTATE->GetCurrentStyle(m_pPlayerState->m_PlayerNumber);
   for (unsigned i = 0; i < m_ReceptorArrow.size(); i++) {
     const int c = pStyle->m_iColumnDrawOrder[i];
+    const float x = m_ReceptorArrow[c]->GetX();
+    if (g_StreamMirrorDrawing) {
+      m_ReceptorArrow[c]->SetX(-x);
+    }
     m_ReceptorArrow[c]->Draw();
+    m_ReceptorArrow[c]->SetX(x);
   }
 }
 

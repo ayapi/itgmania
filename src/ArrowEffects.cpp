@@ -23,6 +23,7 @@
 #include "Song.h"
 #include "SongPosition.h"
 #include "Steps.h"
+#include "StreamMirror.h"
 #include "Style.h"
 #include "ThemeMetric.h"
 #include "global.h"
@@ -1030,7 +1031,9 @@ float ArrowEffects::GetXPos(
     fPixelOffsetFromCenter *= fTinyPercent;
   }
 
-  return fPixelOffsetFromCenter;
+  // Only the extra stream draw swaps lanes; chart and input stay intact.
+  return g_StreamMirrorDrawing ? -fPixelOffsetFromCenter
+                               : fPixelOffsetFromCenter;
 }
 
 float ArrowEffects::GetRotationX(

@@ -102,11 +102,14 @@ void GhostArrowRow::DrawPrimitives() {
   for (unsigned i = 0; i < m_Ghost.size(); i++) {
     const int c = pStyle->m_iColumnDrawOrder[i];
     const float rotation = m_Ghost[c]->GetRotationZ();
+    const float x = m_Ghost[c]->GetX();
     if (g_StreamMirrorDrawing) {
       m_Ghost[c]->SetRotationZ(rotation + 180.0f);
+      m_Ghost[c]->SetX(-x);
     }
     m_Ghost[c]->Draw();
     m_Ghost[c]->SetRotationZ(rotation);
+    m_Ghost[c]->SetX(x);
   }
 }
 
