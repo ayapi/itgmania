@@ -60,16 +60,27 @@ Machines font and red/green outline as BPM. The game itself renders BPM above
 the receptors, using Beast Machines lettering: cyan at the chart BPM, red above
 it, green below it. Its 12% pulse follows the song beat, including rate changes,
 stops and pauses; no extra timer or browser polling drives the animation.
-Older tempo gifts appear above newer gifts; new rows slide in and push existing
-rows upwards in 160 ms. URL parameters `bpmX` and `bpmBottom` position this stack
-in canvas pixels. Keep the browser source at 0,0 with scale 1. Match its BPM
-anchor to the OBS game source after moving or resizing that source.
+Tempo gift names now render natively in the same update as the changed BPM,
+for 0.8 seconds. Requests that only increase capped overflow do not show a name.
+Up to three recent names stack above BPM; locked gifts appear at release if the
+effective BPM changes. The browser suppresses its legacy tempo stack when
+`native_tempo_notice` is true. Existing URL layout parameters remain available
+for older game versions.
 `prepare_overlay_font.py --root <runtime> --archive <font ZIP>` embeds the user's
 local font in the runtime HTML. The repository contains no font data. Re-run
 after replacing the HTML template; the Beast font importer also runs this step.
 `prepare_stream_bpm_font.py --root <runtime> --archive <font ZIP>` generates
 three local bitmap fonts for native BPM. It needs Pillow, and runs automatically
 from the Beast font importer. Install these assets before loading GiftAPI.lua.
+`prepare_stream_name_font.py --root <runtime>` generates cached Noto Sans JP
+Bold pages for native names and lock labels (Pillow required). It downloads the
+official Google Fonts variable TTF and OFL license to `Save/GiftAPI/font-cache`.
+`--font <TTF>` can supply a local copy. The font covers 7,663 Latin, kana and
+Japanese code-page characters. Missing characters use the game's default
+fallback; this bitmap renderer does not implement the browser's color-emoji
+sequence shaping. Native note labels use smaller text and retain two-line
+wrapping and ellipsis. BPM and lock text fit with uniform scaling, never by
+squeezing only the horizontal axis.
 Streaming judgment movement takes 30 ms on entry and 70 ms on exit, while
 retaining the 0.6-second readable hold. The installer applies this theme patch.
 
@@ -106,20 +117,20 @@ oversized requests receive HTTP 409. Six visible cards, three per direction
 group, remain the display limit.
 
 Native HUD shows `BPM115(+7)`, a beat-synchronized pulse, active lock sender and
-remaining seconds, and a compact life gauge. Standard ITGmania `EndOfSong`
+remaining measures, and a compact life gauge. Standard ITGmania `EndOfSong`
 failure mode keeps the song running through zero life and uses the engine's
 existing end-of-song CLEAR/FAILED result. Combo and native note judgments remain.
 Gift-modified scores do not replace the original chart's personal bests.
-The life gauge sits 22 logical units below the lower judgment/combo anchor,
+The white-framed life gauge sits midway between judgment and combo anchors,
 including in the stream mirror. `stream_life.py` patches the theme's native life
 metrics: streaming Casual mode uses ITG's gains/losses instead of Casual's zero
 changes. Casual timing and scoring remain unchanged; normal non-streaming mode
 keeps its original life rules. Restart the game after installing this patch.
 
 OBS keeps song information, NOTE ATTACK on the left, BPM ATTACK / LOCK on the
-right, and both remaining counts or SOLD OUT. Tempo senders appear briefly at
-application time, with consecutive repeats grouped as `A +1 ×5`. Notifications
-expire after four seconds; a lock-held gift is announced when actually applied.
+right, and both remaining counts or SOLD OUT. Native tempo senders appear briefly
+at application time, with consecutive repeats grouped as `A +1 x5`. Notifications
+expire after 0.8 seconds; a lock-held gift is announced when actually applied.
 The prices are initial display guidance: 10–20 / 50 / 100 yen equivalents for
 ±1 / ±5 / ±10, 100 yen per note, and 500 yen per four-measure lock.
 
@@ -133,7 +144,7 @@ large bursts; lock completion IDs also resolve held-event receipts.
 
 `Save/GiftAPI/config.json` exposes `tempo_limit_percent` (at most 0.15),
 `tempo_stored_limit_percent` (initially 0.50), `tempo_decay_measures` (4),
-`lock_min_measures` (4), and `tempo_notice_seconds` (4). Restart the bridge and
+`lock_min_measures` (4), and `tempo_notice_seconds` (0.8). Restart the bridge and
 start a new song after editing configuration. The native status includes
 `protocol_version: 3`, `bpm_offset`, `bpm_delta` (applied), `bpm_overflow`,
 `pending_bpm_delta`, `bpm_lock`, `note_slots_total`, `note_remaining`,

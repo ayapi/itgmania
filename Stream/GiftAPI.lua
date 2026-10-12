@@ -5,7 +5,7 @@ local directory = "Save/GiftAPI/"
 local config = {max_active_arrows=24, max_queued_arrows=512, max_tempo_effects=128,
                 min_rate=0.25, max_rate=3, min_lead_seconds=0.8,
                 tempo_limit_percent=0.15,tempo_stored_limit_percent=0.50,
-                tempo_decay_measures=4,lock_min_measures=4,tempo_notice_seconds=4}
+                tempo_decay_measures=4,lock_min_measures=4,tempo_notice_seconds=0.8}
 local packetCache={}
 local screen
 local performance={max_update_ms=0,max_insert_ms=0,slow_updates=0}
@@ -58,6 +58,9 @@ local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}
 local noteFeed={}
 local byname, containers, bubbleActors={}, {}, {}
 local bpmActor
+local noticeActors,tempoNotices={},{}
+local bubbleZoom=0.65
+local nameFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream Noto Sans JP.ini") and "Stream Noto Sans JP" or "Common Normal"
 local rules,lockActor,lifeActor
 local inventoryTotal=0
 local nextLabelOrder=0
@@ -154,6 +157,7 @@ local function snapshot(ready, message)
   song_artist=song and song:GetDisplayArtist() or "",
   active_tempo_effects=tempoEffects,
   tempo_feed=rules and rules.feed or {},bpm_offset=rules and rules.offset or 0,
+  native_tempo_notice=true,tempo_notice=tempoNotices,
   note_feed=noteFeed,
   pending_bpm_delta=rules and rules.pendingDelta or 0,
   bpm_offset_limit=rules and rules:limit(currentBpm) or 0,
@@ -305,6 +309,7 @@ local function updateTempo(now)
  local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
  if not master then return end
  local beat=master.ps:GetSongPosition():GetSongBeat()
+ local beforeBpm=currentBpm*effectiveRate
  currentBpm=master.timing:GetBPMAtBeat(beat)
  rules:step(beat,now)
  for id,event in pairs(rules.changes) do
@@ -316,7 +321,19 @@ local function updateTempo(now)
   local bpm=math.max(currentBpm-limit,math.min(currentBpm+limit,rules:bpm(currentBpm)))
   totalDelta=bpm-currentBpm
   applyRate(bpm/currentBpm)
+  if math.abs(bpm-beforeBpm)>0.01 then
+   for _,command in ipairs(rules.appliedThisStep) do
+    local last=tempoNotices[#tempoNotices]
+    if last and last.sender==command.sender and last.bpm_delta==command.bpm_delta and now-last.last_at<=config.tempo_notice_seconds then
+     last.count=last.count+1 last.last_at=now
+    else
+     tempoNotices[#tempoNotices+1]={sender=command.sender,bpm_delta=command.bpm_delta,count=1,last_at=now,actual_bpm=bpm}
+    end
+   end
+   while #tempoNotices>3 do table.remove(tempoNotices,1) end
+  end
  end
+ for i=#tempoNotices,1,-1 do if now-tempoNotices[i].last_at>config.tempo_notice_seconds then table.remove(tempoNotices,i) end end
 end
 local function geometry(p, beat, column)
  local yoffset=ArrowEffects.GetYOffset(p.ps,column,beat)
@@ -571,13 +588,13 @@ local function updateBubbles()
    text:maxwidth(0)
    item.note.formattedName=formatSender(item.note.sender,function(value)
     text:settext(value)
-    return text:GetWidth()*0.7
+    return text:GetWidth()*bubbleZoom
    end,70)
-   text:settext(item.note.formattedName):maxwidth(70/0.7)
+   text:settext(item.note.formattedName):maxwidth(0)
    -- Three logical pixels of padding on each edge; short names and one-line
    -- names no longer reserve a full two-line card.
-   item.note.labelWidth=math.min(76,math.max(16,text:GetWidth()*0.7+6))
-   item.note.labelHeight=math.max(16,text:GetHeight()*0.7+6)
+   item.note.labelWidth=math.min(76,math.max(16,text:GetWidth()*bubbleZoom+6))
+   item.note.labelHeight=math.max(16,text:GetHeight()*bubbleZoom+6)
    local vertices=roundedBubbleVertices(item.note.labelWidth,item.note.labelHeight,3)
    item.actor:GetChild("Background"):SetNumVertices(#vertices):SetVertices(vertices)
   end
@@ -700,6 +717,7 @@ local af=Def.ActorFrame{
   if bpmActor and bpmActor:GetVisible() then bpmActor:Draw() end
   if lockActor and lockActor:GetVisible() then lockActor:Draw() end
   if lifeActor and lifeActor:GetVisible() then lifeActor:Draw() end
+  for _,actor in ipairs(noticeActors) do if actor:GetVisible() then actor:Draw() end end
  end,
  OnCommand=function(self)
   initialize()
@@ -748,14 +766,17 @@ local af=Def.ActorFrame{
       local colorName=bpm>currentBpm+0.01 and "Up" or bpm<currentBpm-0.01 and "Down" or "Base"
       local value=string.format("%.1f",bpm):gsub("%.0$","")
       for _,name in ipairs({"Base","Up","Down"}) do
-       bpmActor:GetChild(name):visible(name==colorName):settext("BPM"..value.."("..string.format("%+.0f",totalDelta)..")")
+       local text=bpmActor:GetChild(name)
+       text:visible(name==colorName):settext("BPM"..value.."("..string.format("%+.0f",totalDelta)..")")
+       text:zoom(math.min(0.8,115/math.max(1,text:GetWidth())))
       end
       if lockActor then
        local lock=rules.lock
        lockActor:xy(master.actor:GetX(),39):visible(lock~=nil and ready)
        if lock then
-        local seconds=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-pos:GetMusicSeconds())/effectiveRate)
-        lockActor:settext("LOCK "..lock.sender.." "..string.format("%.1f",seconds).."s")
+        local measures=math.max(0,lock.endMeasure-Rules.measure(beat,rules.signatures))
+        lockActor:settext("LOCK "..lock.sender.." "..string.format("%.1f",measures).."小節")
+        lockActor:zoom(math.min(0.65,128/math.max(1,lockActor:GetWidth())))
        end
       end
       if lifeActor then
@@ -763,10 +784,36 @@ local af=Def.ActorFrame{
        local life=meter and meter:GetLife() or 1
        if not master.lifeY then
         local layout=GetGameplayLayout(master.pn,master.ps:GetPlayerOptions("ModsLevel_Current"):Reverse()>0.5)
-        master.lifeY=math.max(layout.Judgment.y,layout.Combo.y)+22
+        master.lifeY=(layout.Judgment.y+layout.Combo.y)/2
        end
        lifeActor:xy(master.actor:GetX(),master.lifeY):visible(ready)
-       lifeActor:GetChild("Fill"):zoomto(128*math.max(0,life),3):diffuse(life<0.25 and color("#ff4040") or color("#39d638"))
+       lifeActor:GetChild("Fill"):zoomto(128*math.max(0,life),5):diffuse(life<0.25 and color("#ff4040") or color("#39d638"))
+      end
+      for i,actor in ipairs(noticeActors) do
+       local notice=tempoNotices[i]
+       actor:visible(ready and notice~=nil)
+       if notice then
+        local sender=actor:GetChild("Sender")
+        if not notice.displayName then
+         local short=notice.sender
+         sender:settext(short)
+         while sender:GetWidth()*0.7>75 and #short>0 do
+          short=short:gsub("[%z\1-\127\194-\244][\128-\191]*$","")
+          sender:settext(short.."...")
+         end
+         notice.displayName=short..(short~=notice.sender and "..." or "")
+        end
+        sender:settext(notice.displayName)
+        local selected=notice.bpm_delta>0 and "Up" or "Down"
+        local delta=actor:GetChild(selected)
+        delta:settext(string.format("%+d",notice.bpm_delta)..(notice.count>1 and " x"..notice.count or ""))
+        delta:zoom(math.min(0.65,40/math.max(1,delta:GetWidth())))
+        local nw,dw=sender:GetZoomedWidth(),delta:GetZoomedWidth()
+        sender:x(-(nw+dw+4)/2)
+        for _,name in ipairs({"Up","Down"}) do actor:GetChild(name):visible(name==selected):x((nw-dw+4)/2) end
+        actor:xy(master.actor:GetX(),(rules.lock and 15 or 43)-(#tempoNotices-i)*15)
+        actor:diffusealpha(math.min(1,(config.tempo_notice_seconds-(now-notice.last_at))/0.12))
+       end
       end
      end
     end
@@ -815,20 +862,36 @@ for _,name in ipairs({"Base","Up","Down"}) do
  local hasFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream BPM "..name..".ini")
  bpm[#bpm+1]=LoadFont(hasFont and "Stream BPM "..name or "Common Normal")..{
   Name=name,
-  InitCommand=function(self) self:zoom(0.8):maxwidth(115/0.8):diffuse(1,1,1,1):shadowlength(0):visible(false) end,
+  InitCommand=function(self) self:zoom(0.8):diffuse(1,1,1,1):shadowlength(0):visible(false) end,
  }
 end
 af[#af+1]=bpm
-af[#af+1]=LoadFont("Common Normal")..{
+af[#af+1]=LoadFont(nameFont)..{
  Name="StreamLock",
- InitCommand=function(self) lockActor=self self:zoom(0.5):maxwidth(128/0.5):diffuse(1,1,1,1):shadowlength(1):visible(false) end,
+ InitCommand=function(self) lockActor=self self:zoom(0.65):diffuse(1,1,1,1):shadowlength(1):visible(false) end,
 }
 af[#af+1]=Def.ActorFrame{
  Name="StreamLife",
  InitCommand=function(self) lifeActor=self self:visible(false) end,
- Def.Quad{InitCommand=function(self) self:zoomto(130,5):diffuse(0,0,0,0.7) end},
- Def.Quad{Name="Fill",InitCommand=function(self) self:halign(0):x(-64):zoomto(128,3):diffuse(0.2,0.8,0.2,1) end},
+ Def.Quad{Name="Frame",InitCommand=function(self) self:zoomto(132,9):diffuse(1,1,1,1) end},
+ Def.Quad{InitCommand=function(self) self:zoomto(128,5):diffuse(0,0,0,0.9) end},
+ Def.Quad{Name="Fill",InitCommand=function(self) self:halign(0):x(-64):zoomto(128,5):diffuse(0.2,0.8,0.2,1) end},
 }
+for i=1,3 do
+ local index=i
+ local notice=Def.ActorFrame{
+  Name="StreamTempoNotice"..i,
+  InitCommand=function(self) noticeActors[index]=self self:visible(false) end,
+  LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(1,1,1,1):shadowlength(1) end},
+ }
+ for _,name in ipairs({"Up","Down"}) do
+  local hasFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream BPM "..name..".ini")
+  notice[#notice+1]=LoadFont(hasFont and "Stream BPM "..name or "Common Normal")..{
+   Name=name,InitCommand=function(self) self:halign(0):zoom(0.65):diffuse(1,1,1,1):shadowlength(0) end,
+  }
+ end
+ af[#af+1]=notice
+end
 for i=1,config.max_active_arrows do
  local index=i
  af[#af+1]=Def.ActorFrame{
@@ -840,7 +903,7 @@ for i=1,config.max_active_arrows do
    local vertices=roundedBubbleVertices(66,32,4)
    self:SetDrawState({Mode="DrawMode_Fan"}):SetNumVertices(#vertices):SetVertices(vertices)
   end},
-  LoadFont("Common Normal")..{Name="Sender",InitCommand=function(self) self:zoom(0.7):vertspacing(-5):maxwidth(80):diffuse(0,0,0,1):shadowlength(0) end},
+  LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:zoom(bubbleZoom):vertspacing(-3):diffuse(0,0,0,1):shadowlength(0) end},
  }
 end
 return af

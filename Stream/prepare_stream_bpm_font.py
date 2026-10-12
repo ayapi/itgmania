@@ -11,7 +11,7 @@ def install(root, archive):
         data = z.read('Beast Machines.TTF')
     directory = root / 'Themes/Simply Love/Fonts'
     directory.mkdir(parents=True, exist_ok=True)
-    characters = 'BPM0123456789.+-()'
+    characters = 'BPM0123456789.+-()x'
     for name, color in [('Base', '#48d9ff'), ('Up', '#ff4040'), ('Down', '#39d638')]:
         atlas = Image.new('RGBA', (96*len(characters), 64))
         widths = []

@@ -56,7 +56,7 @@ function render(status){
  const receipt=document.getElementById('receipt'),note=(status.note_feed||[]).slice(-1)[0];
  receipt.textContent=note?(note.count+'ノート受付：'+note.sender):'100円相当 / 1ノート';
  if(note && receiptId!==note.event_id){receiptId=note.event_id;receipt.animate([{transform:'translateY(16px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:160,easing:'ease-out'});}
- const effects=(Array.isArray(status.tempo_feed)?status.tempo_feed:[]).slice(-3);
+ const effects=status.native_tempo_notice?[]:(Array.isArray(status.tempo_feed)?status.tempo_feed:[]).slice(-3);
  const before=new Map([...rows].map(([id,row])=>[id,row.getBoundingClientRect().top]));
  const alive=new Set(),added=new Set();
  for(const [index,effect] of effects.entries()){

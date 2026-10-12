@@ -22,7 +22,7 @@ end
 function R.new(config,lastBeat,signatures,baseAt)
  local t={config=config,lastBeat=lastBeat,signatures=signatures,baseAt=baseAt,
   offset=0,pendingDelta=0,held={},actions={},locks={},lock=nil,
-  lastBeatUpdated=0,decayElapsed=0,feed={},serial=0,lockReserved=0,events={},changes={},completedLocks={},
+  lastBeatUpdated=0,decayElapsed=0,feed={},appliedThisStep={},serial=0,lockReserved=0,events={},changes={},completedLocks={},
   metrics={tempo_gifts=0,lock_gifts=0,cap_seconds=0,max_overflow=0}}
  return setmetatable(t,{__index=R})
 end
@@ -76,6 +76,7 @@ function R:apply(command,now)
  self.pendingDelta=self.pendingDelta-command.bpm_delta
  self.decayElapsed=0
  self:event(command.event_id,'applied')
+ self.appliedThisStep[#self.appliedThisStep+1]=command
  self:announce(command,now)
 end
 function R:startLock(command,beat)
@@ -95,6 +96,7 @@ function R:advanceUnlocked(from,to)
  end
 end
 function R:step(beat,now)
+ self.appliedThisStep={}
  if beat<0 then return end
  local cursor=self.lastBeatUpdated
  while cursor<=beat do

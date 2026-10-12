@@ -9,5 +9,5 @@
   "tempo_stored_limit_percent": 0.50,
   "tempo_decay_measures": 4,
   "lock_min_measures": 4,
-  "tempo_notice_seconds": 4
+  "tempo_notice_seconds": 0.8
 }
