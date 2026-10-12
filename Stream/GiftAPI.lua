@@ -761,7 +761,11 @@ local af=Def.ActorFrame{
       if lifeActor then
        local meter=screen:GetLifeMeter(master.pn)
        local life=meter and meter:GetLife() or 1
-       lifeActor:xy(master.actor:GetX(),23):visible(ready)
+       if not master.lifeY then
+        local layout=GetGameplayLayout(master.pn,master.ps:GetPlayerOptions("ModsLevel_Current"):Reverse()>0.5)
+        master.lifeY=math.max(layout.Judgment.y,layout.Combo.y)+22
+       end
+       lifeActor:xy(master.actor:GetX(),master.lifeY):visible(ready)
        lifeActor:GetChild("Fill"):zoomto(128*math.max(0,life),3):diffuse(life<0.25 and color("#ff4040") or color("#39d638"))
       end
      end

@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse, configparser, json, re, shutil
 from quiet_menus import install as quiet_menus
 from compact_judgments import install as compact_judgments
+from stream_life import install as stream_life
 
 def install(root):
     root = root.resolve()
@@ -93,6 +94,7 @@ end
     (root/'Portable.ini').touch(exist_ok=True)
     quiet_menus(root)
     compact_judgments(root)
+    stream_life(root)
     (root/'start-game.cmd').write_bytes(
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_api_background.py\r\n'

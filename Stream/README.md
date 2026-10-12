@@ -110,6 +110,11 @@ remaining seconds, and a compact life gauge. Standard ITGmania `EndOfSong`
 failure mode keeps the song running through zero life and uses the engine's
 existing end-of-song CLEAR/FAILED result. Combo and native note judgments remain.
 Gift-modified scores do not replace the original chart's personal bests.
+The life gauge sits 22 logical units below the lower judgment/combo anchor,
+including in the stream mirror. `stream_life.py` patches the theme's native life
+metrics: streaming Casual mode uses ITG's gains/losses instead of Casual's zero
+changes. Casual timing and scoring remain unchanged; normal non-streaming mode
+keeps its original life rules. Restart the game after installing this patch.
 
 OBS keeps song information, NOTE ATTACK on the left, BPM ATTACK / LOCK on the
 right, and both remaining counts or SOLD OUT. Tempo senders appear briefly at
