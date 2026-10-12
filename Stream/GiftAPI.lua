@@ -158,6 +158,7 @@ local function snapshot(ready, message)
   active_tempo_effects=tempoEffects,
   tempo_feed=rules and rules.feed or {},bpm_offset=rules and rules.offset or 0,
   native_tempo_notice=true,tempo_notice=tempoNotices,
+  native_name_font=nameFont,native_name_font_mapping="unicode_range_v2",
   note_feed=noteFeed,
   pending_bpm_delta=rules and rules.pendingDelta or 0,
   bpm_offset_limit=rules and rules:limit(currentBpm) or 0,
@@ -768,7 +769,6 @@ local af=Def.ActorFrame{
       for _,name in ipairs({"Base","Up","Down"}) do
        local text=bpmActor:GetChild(name)
        text:visible(name==colorName):settext("BPM"..value.."("..string.format("%+.0f",totalDelta)..")")
-       text:zoom(math.min(0.8,115/math.max(1,text:GetWidth())))
       end
       if lockActor then
        local lock=rules.lock
@@ -804,13 +804,12 @@ local af=Def.ActorFrame{
          notice.displayName=short..(short~=notice.sender and "..." or "")
         end
         sender:settext(notice.displayName)
-        local selected=notice.bpm_delta>0 and "Up" or "Down"
-        local delta=actor:GetChild(selected)
+        local delta=actor:GetChild("Delta")
         delta:settext(string.format("%+d",notice.bpm_delta)..(notice.count>1 and " x"..notice.count or ""))
-        delta:zoom(math.min(0.65,40/math.max(1,delta:GetWidth())))
+        delta:diffuse(notice.bpm_delta>0 and color("#ff4040") or color("#39d638"))
         local nw,dw=sender:GetZoomedWidth(),delta:GetZoomedWidth()
         sender:x(-(nw+dw+4)/2)
-        for _,name in ipairs({"Up","Down"}) do actor:GetChild(name):visible(name==selected):x((nw-dw+4)/2) end
+        delta:x((nw-dw+4)/2)
         actor:xy(master.actor:GetX(),(rules.lock and 15 or 43)-(#tempoNotices-i)*15)
         actor:diffusealpha(math.min(1,(config.tempo_notice_seconds-(now-notice.last_at))/0.12))
        end
@@ -819,6 +818,25 @@ local af=Def.ActorFrame{
     end
     measured("max_points_ms",updatePointLimits)
     measured("max_bubbles_ms",updateBubbles)
+    if bpmActor then
+     local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
+     if master then
+      -- Use the actual card edges, reserving one unit on each side at the
+      -- largest beat pulse. Tight names leave room for a larger BPM label.
+      local half=98
+      for _,note in ipairs(state.active) do
+       local layout=note.labelGeometry
+       if not note.done and layout and math.abs(layout.y-68)<(note.labelHeight/2+12) then
+        half=math.min(half,math.abs(layout.edge-master.actor:GetX()))
+       end
+      end
+      local width=math.max(24,2*half-2)/1.12
+      for _,name in ipairs({"Base","Up","Down"}) do
+       local text=bpmActor:GetChild(name)
+       text:zoom(math.min(1,width/math.max(1,text:GetWidth())))
+      end
+     end
+    end
     if now-lastStatus>=0.1 then
      measured("max_status_ms",function() snapshot(ready,ready and "" or "Song has not started, has ended, or is paused") end) lastStatus=now
     end
@@ -868,7 +886,7 @@ end
 af[#af+1]=bpm
 af[#af+1]=LoadFont(nameFont)..{
  Name="StreamLock",
- InitCommand=function(self) lockActor=self self:zoom(0.65):diffuse(1,1,1,1):shadowlength(1):visible(false) end,
+ InitCommand=function(self) lockActor=self self:zoom(0.65):diffuse(1,1,1,1):strokecolor(0,0,0,1):shadowlength(0):visible(false) end,
 }
 af[#af+1]=Def.ActorFrame{
  Name="StreamLife",
@@ -882,14 +900,9 @@ for i=1,3 do
  local notice=Def.ActorFrame{
   Name="StreamTempoNotice"..i,
   InitCommand=function(self) noticeActors[index]=self self:visible(false) end,
-  LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(1,1,1,1):shadowlength(1) end},
+  LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(1,1,1,1):strokecolor(0,0,0,1):shadowlength(0) end},
+  LoadFont(nameFont)..{Name="Delta",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(1,1,1,1):strokecolor(0,0,0,1):shadowlength(0) end},
  }
- for _,name in ipairs({"Up","Down"}) do
-  local hasFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream BPM "..name..".ini")
-  notice[#notice+1]=LoadFont(hasFont and "Stream BPM "..name or "Common Normal")..{
-   Name=name,InitCommand=function(self) self:halign(0):zoom(0.65):diffuse(1,1,1,1):shadowlength(0) end,
-  }
- end
  af[#af+1]=notice
 end
 for i=1,config.max_active_arrows do

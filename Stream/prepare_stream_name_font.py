@@ -5,7 +5,7 @@ Requires Pillow. Generated assets and downloaded font data stay in the runtime.
 from pathlib import Path
 from urllib.request import urlretrieve
 import argparse,math,unicodedata
-from PIL import Image,ImageDraw,ImageFont
+from PIL import Image,ImageDraw,ImageFont,ImageFilter
 
 
 def characters():
@@ -46,9 +46,14 @@ def install(root,font_path=None):
             char=chr(codepoint);advance=font.getlength(char)
             x=index%columns*40+(40-advance)/2;y=index//columns*44+36
             draw.text((x,y),char,font=font,fill='white',anchor='ls')
-            settings.extend([f'map U+{codepoint:04X}={index}',f'{index}={max(1,round(advance/2))}'])
-            if char=='?':settings.append(f'map U+F8FF={index}')
+            # This ITGmania build mis-parses "map U+..." as a character.
+            # Its Unicode RANGE parser reads hexadecimal codepoints correctly.
+            settings.extend([f'range Unicode #{codepoint:04X}-{codepoint:04X}={index}',f'{index}={max(1,round(advance/2))}'])
+            if char=='?':settings.append(f'map default={index}')
         atlas.save(directory/f'{prefix} [page{page:02}] {columns}x{actual_rows} (doubleres).png')
+        stroke=Image.new('RGBA',atlas.size,'white')
+        stroke.putalpha(atlas.getchannel('A').filter(ImageFilter.MaxFilter(9)))
+        stroke.save(directory/f'{prefix} [page{page:02}-stroke] {columns}x{actual_rows} (doubleres).png')
     (directory/(prefix+'.ini')).write_text('\n'.join(settings)+'\n',encoding='utf-8')
     # Font loading glob-matches this prefix without checking extensions.
     # Keep the license beside the downloaded TTF, outside the font directory.

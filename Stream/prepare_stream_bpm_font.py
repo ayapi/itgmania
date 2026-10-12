@@ -27,7 +27,7 @@ def install(root, archive):
                 old.unlink()  # Only our obsolete generated page, not user fonts.
         atlas.save(directory / filename)
         (directory / (prefix+'.ini')).write_text(
-            '[Char Widths]\nline 0='+characters+'\nDefaultWidth=30\nAdvanceExtraPixels=-3\n'+
+            '[Char Widths]\nline 0='+characters+'\nDefaultWidth=30\nAdvanceExtraPixels=-5\n'+
             '\n'.join(widths)+'\n', encoding='utf-8')
 
 

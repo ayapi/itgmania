@@ -31,8 +31,8 @@ arrival/reflow; they never scroll with the notes. Thin leaders follow the live
 arrow position. Excess gift notes remain queued until one of six slots opens.
 The newest cards align with BPM at Y=68, immediately above the receptors.
 Cards fit their one/two-line text up to 76 units wide, with three units of
-padding and two-unit gaps. Native BPM has three fewer units of glyph advance;
-the browser tempo list uses two-pixel row gaps and sits closer to native BPM.
+padding and two-unit gaps. Native BPM uses tighter glyph advance and grows to
+fit the inner card edges, keeping one logical unit of clearance at peak pulse.
 
 Start `Stream/start-api.cmd` for the local HTTP server on port 8765. Close the
 old OutFox API server first when switching to this runtime. The request format
@@ -55,8 +55,9 @@ Song information sits at the upper left, with a ♪ prefix on the title. Song
 information and sender names prioritize Google Fonts Noto Color Emoji, with
 Noto Sans JP for characters outside the emoji font. Loading these fonts needs
 an Internet connection; the browser uses its sans-serif fallback otherwise.
-Tempo gifts have no background box, and their deltas use the same Beast
-Machines font and red/green outline as BPM. The game itself renders BPM above
+Tempo gifts have no background box. Native sender names and deltas both use
+Noto Sans JP Bold at the same size, with a crisp black stroke; only the delta's
+fill changes to red/green. The game itself renders BPM above
 the receptors, using Beast Machines lettering: cyan at the chart BPM, red above
 it, green below it. Its 12% pulse follows the song beat, including rate changes,
 stops and pauses; no extra timer or browser polling drives the animation.
@@ -73,7 +74,7 @@ after replacing the HTML template; the Beast font importer also runs this step.
 three local bitmap fonts for native BPM. It needs Pillow, and runs automatically
 from the Beast font importer. Install these assets before loading GiftAPI.lua.
 `prepare_stream_name_font.py --root <runtime>` generates cached Noto Sans JP
-Bold pages for native names and lock labels (Pillow required). It downloads the
+Bold pages and stroke textures for native names and lock labels (Pillow required). It downloads the
 official Google Fonts variable TTF and OFL license to `Save/GiftAPI/font-cache`.
 `--font <TTF>` can supply a local copy. The font covers 7,663 Latin, kana and
 Japanese code-page characters. Missing characters use the game's default
@@ -81,6 +82,8 @@ fallback; this bitmap renderer does not implement the browser's color-emoji
 sequence shaping. Native note labels use smaller text and retain two-line
 wrapping and ellipsis. BPM and lock text fit with uniform scaling, never by
 squeezing only the horizontal axis.
+Unicode RANGE mappings avoid this engine version's broken `map U+...` parsing,
+so supported Japanese glyphs come from Noto rather than the legacy fallback.
 Streaming judgment movement takes 30 ms on entry and 70 ms on exit, while
 retaining the 0.6-second readable hold. The installer applies this theme patch.
 
