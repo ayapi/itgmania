@@ -64,7 +64,7 @@ local nameFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/St
 local rules,lockActor,lifeActor
 local inventoryTotal=0
 local nextLabelOrder=0
-local roundedBubbleVertices
+local roundedBubbleVertices,goldBadgeVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
@@ -531,6 +531,16 @@ local function railBounds()
  end
  return left-4,right+4
 end
+local function singleLineName(name,text,width,zoom)
+ text:settext(name)
+ if text:GetWidth()*zoom<=width then return name end
+ local short=name
+ repeat
+  short=short:gsub("[%z\1-\127\194-\244][\128-\191]*$","")
+  text:settext(short.."…")
+ until short=="" or text:GetWidth()*zoom<=width
+ return short.."…"
+end
 local function formatSender(name,measure,width)
  -- Split at UTF-8 character boundaries, including names without spaces.
  local lines={""}
@@ -774,9 +784,23 @@ local af=Def.ActorFrame{
        local lock=rules.lock
        lockActor:xy(master.actor:GetX(),39):visible(lock~=nil and ready)
        if lock then
-        local measures=math.max(0,lock.endMeasure-Rules.measure(beat,rules.signatures))
-        lockActor:settext("LOCK "..lock.sender.." "..string.format("%.1f",measures).."小節")
-        lockActor:zoom(math.min(0.65,128/math.max(1,lockActor:GetWidth())))
+        local remaining=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate)
+        local secondsText=string.format("%.1fs",remaining)
+        if lock.displaySeconds~=secondsText then
+         lock.displaySeconds=secondsText
+         local sender=lockActor:GetChild("Sender") local timer=lockActor:GetChild("Time")
+         timer:settext(secondsText)
+         local timeWidth=timer:GetZoomedWidth()
+         sender:settext(singleLineName(lock.sender,sender,math.min(100,160-22-timeWidth),0.7))
+         local nameWidth=sender:GetZoomedWidth()
+         local width=22+nameWidth+timeWidth
+         sender:x(-width/2+15) timer:x(-width/2+19+nameWidth)
+         lockActor:GetChild("Icon"):x(-width/2+7)
+         local border=roundedBubbleVertices(width,18,3)
+         lockActor:GetChild("Border"):SetNumVertices(#border):SetVertices(border)
+         local background=goldBadgeVertices(width-2,16,2)
+         lockActor:GetChild("Background"):SetNumVertices(#background):SetVertices(background)
+        end
        end
       end
       if lifeActor then
@@ -795,13 +819,7 @@ local af=Def.ActorFrame{
        if notice then
         local sender=actor:GetChild("Sender")
         if not notice.displayName then
-         local short=notice.sender
-         sender:settext(short)
-         while sender:GetWidth()*0.7>75 and #short>0 do
-          short=short:gsub("[%z\1-\127\194-\244][\128-\191]*$","")
-          sender:settext(short.."...")
-         end
-         notice.displayName=short..(short~=notice.sender and "..." or "")
+         notice.displayName=singleLineName(notice.sender,sender,75,0.7)
         end
         sender:settext(notice.displayName)
         local delta=actor:GetChild("Delta")
@@ -872,6 +890,23 @@ roundedBubbleVertices=function(width,height,radius)
  vertices[#vertices+1]=vertices[2]
  return vertices
 end
+goldBadgeVertices=function(width,height,radius)
+ local stops={{0,color("#946019")},{0.2,color("#e8b94d")},{0.42,color("#fff1b2")},
+              {0.5,color("#ffe6a0")},{0.55,color("#bb8628")},{0.8,color("#d9a93c")},{1,color("#f5d878")}}
+ local vertices={}
+ local function edge(y)
+  local corner=math.max(0,math.abs(y)-(height/2-radius))
+  return width/2-radius+math.sqrt(math.max(0,radius*radius-corner*corner))
+ end
+ for i=1,#stops-1 do
+  local a,b=stops[i],stops[i+1]
+  local ay,by=(a[1]-0.5)*height,(b[1]-0.5)*height
+  local ax,bx=edge(ay),edge(by)
+  local tl,tr,bl,br={{-ax,ay,0},a[2]},{{ax,ay,0},a[2]},{{-bx,by,0},b[2]},{{bx,by,0},b[2]}
+  for _,v in ipairs({tl,bl,tr,tr,bl,br}) do vertices[#vertices+1]=v end
+ end
+ return vertices
+end
 local bpm=Def.ActorFrame{
  Name="StreamBPM",
  InitCommand=function(self) bpmActor=self self:visible(false) end,
@@ -884,10 +919,30 @@ for _,name in ipairs({"Base","Up","Down"}) do
  }
 end
 af[#af+1]=bpm
-af[#af+1]=LoadFont(nameFont)..{
+af[#af+1]=Def.ActorFrame{
  Name="StreamLock",
- InitCommand=function(self) lockActor=self self:zoom(0.65):diffuse(1,1,1,1):strokecolor(0,0,0,1):shadowlength(0):visible(false) end,
+ InitCommand=function(self) lockActor=self self:visible(false) end,
+ Def.ActorMultiVertex{Name="Border",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Fan"}):diffuse(color("#5c3908")) end},
+ Def.ActorMultiVertex{Name="Background",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Triangles"}) end},
+ Def.ActorFrame{Name="Icon",
+  -- A native padlock pictogram avoids unsupported emoji fallback glyphs.
+  Def.Quad{InitCommand=function(self) self:xy(-2.5,-2):zoomto(2,6):diffuse(0,0,0,1) end},
+  Def.Quad{InitCommand=function(self) self:xy(2.5,-2):zoomto(2,6):diffuse(0,0,0,1) end},
+  Def.Quad{InitCommand=function(self) self:y(-5):zoomto(7,2):diffuse(0,0,0,1) end},
+  Def.ActorMultiVertex{InitCommand=function(self)
+   local v=roundedBubbleVertices(9,7,1.5)
+   self:y(2):SetDrawState({Mode="DrawMode_Fan"}):SetNumVertices(#v):SetVertices(v):diffuse(0,0,0,1)
+  end},
+  Def.ActorMultiVertex{InitCommand=function(self)
+   local v=goldBadgeVertices(7,5,1)
+   self:y(2):SetDrawState({Mode="DrawMode_Triangles"}):SetNumVertices(#v):SetVertices(v)
+  end},
+  Def.Quad{InitCommand=function(self) self:y(2):zoomto(1,2):diffuse(0,0,0,1) end},
+ },
+ LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(0,0,0,1):strokecolor(0,0,0,0):shadowlength(0) end},
+ LoadFont(nameFont)..{Name="Time",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(0,0,0,1):strokecolor(0,0,0,0):shadowlength(0) end},
 }
+
 af[#af+1]=Def.ActorFrame{
  Name="StreamLife",
  InitCommand=function(self) lifeActor=self self:visible(false) end,

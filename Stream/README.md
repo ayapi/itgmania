@@ -120,7 +120,7 @@ oversized requests receive HTTP 409. Six visible cards, three per direction
 group, remain the display limit.
 
 Native HUD shows `BPM115(+7)`, a beat-synchronized pulse, active lock sender and
-remaining measures, and a compact life gauge. Standard ITGmania `EndOfSong`
+remaining seconds (e.g. `🔒テスト視聴者A 1.4s`) on a rounded metallic-gold badge, and a compact life gauge. Lock and tempo sender names retain a fixed text size and truncate with `…`. Standard ITGmania `EndOfSong`
 failure mode keeps the song running through zero life and uses the engine's
 existing end-of-song CLEAR/FAILED result. Combo and native note judgments remain.
 Gift-modified scores do not replace the original chart's personal bests.
