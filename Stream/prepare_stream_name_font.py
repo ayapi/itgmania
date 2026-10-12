@@ -35,13 +35,18 @@ def install(root,font_path=None):
     font.set_variation_by_axes([700])
     directory=root/'Themes/Simply Love/Fonts';directory.mkdir(parents=True,exist_ok=True)
     prefix='Stream Noto Sans JP'
+    # A named main page selects our line metrics even when a stroke file sorts
+    # first. Otherwise ITG keeps the taller imported fallback font metrics.
+    for obsolete in directory.glob(prefix+' [[]page00*'):
+        obsolete.unlink()
     chars=characters();columns=25;rows=23;capacity=columns*rows
     settings=['[common]','DefaultWidth=16','LineSpacing=18','Top=2','Baseline=18',
               'DrawExtraPixelsLeft=1','DrawExtraPixelsRight=1','AdvanceExtraPixels=0']
     for page,start in enumerate(range(0,len(chars),capacity)):
         subset=chars[start:start+capacity];actual_rows=math.ceil(len(subset)/columns)
         atlas=Image.new('RGBA',(columns*40,actual_rows*44));draw=ImageDraw.Draw(atlas)
-        settings.extend(['',f'[page{page:02}]'])
+        page_name='main' if page==0 else f'page{page:02}'
+        settings.extend(['',f'[{page_name}]'])
         for index,codepoint in enumerate(subset):
             char=chr(codepoint);advance=font.getlength(char)
             x=index%columns*40+(40-advance)/2;y=index//columns*44+36
@@ -50,10 +55,10 @@ def install(root,font_path=None):
             # Its Unicode RANGE parser reads hexadecimal codepoints correctly.
             settings.extend([f'range Unicode #{codepoint:04X}-{codepoint:04X}={index}',f'{index}={max(1,round(advance/2))}'])
             if char=='?':settings.append(f'map default={index}')
-        atlas.save(directory/f'{prefix} [page{page:02}] {columns}x{actual_rows} (doubleres).png')
+        atlas.save(directory/f'{prefix} [{page_name}] {columns}x{actual_rows} (doubleres).png')
         stroke=Image.new('RGBA',atlas.size,'white')
         stroke.putalpha(atlas.getchannel('A').filter(ImageFilter.MaxFilter(9)))
-        stroke.save(directory/f'{prefix} [page{page:02}-stroke] {columns}x{actual_rows} (doubleres).png')
+        stroke.save(directory/f'{prefix} [{page_name}-stroke] {columns}x{actual_rows} (doubleres).png')
     (directory/(prefix+'.ini')).write_text('\n'.join(settings)+'\n',encoding='utf-8')
     # Font loading glob-matches this prefix without checking extensions.
     # Keep the license beside the downloaded TTF, outside the font directory.
