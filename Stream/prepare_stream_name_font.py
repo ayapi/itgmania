@@ -57,7 +57,7 @@ def install(root,font_path=None):
             if char=='?':settings.append(f'map default={index}')
         atlas.save(directory/f'{prefix} [{page_name}] {columns}x{actual_rows} (doubleres).png')
         stroke=Image.new('RGBA',atlas.size,'white')
-        stroke.putalpha(atlas.getchannel('A').filter(ImageFilter.MaxFilter(9)))
+        stroke.putalpha(atlas.getchannel('A').filter(ImageFilter.MaxFilter(7)))
         stroke.save(directory/f'{prefix} [{page_name}-stroke] {columns}x{actual_rows} (doubleres).png')
     (directory/(prefix+'.ini')).write_text('\n'.join(settings)+'\n',encoding='utf-8')
     # Font loading glob-matches this prefix without checking extensions.

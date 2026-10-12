@@ -229,3 +229,8 @@ counters for the maximum addon update/insertion times and updates over 16.7 ms.
 The native gameplay mailbox reads commands and publishes status on a background
 thread. The render thread exchanges JSON strings in memory; /api/status also
 reports mailbox_async, ps and per-operation/frame timing counters.
+
+The lock badge uses muted brushed gold with dark brown lettering. Tempo
+notices use a thinner black outline and reserve the lane group width (240
+logical units including the delta). Names keep their fixed size and truncate
+only when that full line is exhausted. The three BPM HUD rows stack closely.

@@ -782,7 +782,7 @@ local af=Def.ActorFrame{
       end
       if lockActor then
        local lock=rules.lock
-       lockActor:xy(master.actor:GetX(),39):visible(lock~=nil and ready)
+       lockActor:xy(master.actor:GetX(),#tempoNotices>0 and (51-(#tempoNotices-1)*13-16) or 49):visible(lock~=nil and ready)
        if lock then
         local remaining=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate)
         local secondsText=string.format("%.1fs",remaining)
@@ -796,10 +796,13 @@ local af=Def.ActorFrame{
          local width=22+nameWidth+timeWidth
          sender:x(-width/2+15) timer:x(-width/2+19+nameWidth)
          lockActor:GetChild("Icon"):x(-width/2+7)
-         local border=roundedBubbleVertices(width,18,3)
-         lockActor:GetChild("Border"):SetNumVertices(#border):SetVertices(border)
-         local background=goldBadgeVertices(width-2,16,2)
-         lockActor:GetChild("Background"):SetNumVertices(#background):SetVertices(background)
+         if lock.badgeWidth~=width then
+          lock.badgeWidth=width
+          local border=roundedBubbleVertices(width,18,3)
+          lockActor:GetChild("Border"):SetNumVertices(#border):SetVertices(border)
+          local background=goldBadgeVertices(width-2,16,2)
+          lockActor:GetChild("Background"):SetNumVertices(#background):SetVertices(background)
+         end
         end
        end
       end
@@ -818,17 +821,20 @@ local af=Def.ActorFrame{
        actor:visible(ready and notice~=nil)
        if notice then
         local sender=actor:GetChild("Sender")
-        if not notice.displayName then
-         notice.displayName=singleLineName(notice.sender,sender,75,0.7)
-        end
-        sender:settext(notice.displayName)
         local delta=actor:GetChild("Delta")
         delta:settext(string.format("%+d",notice.bpm_delta)..(notice.count>1 and " x"..notice.count or ""))
+        -- Use the full width of the lane group, including room for the value.
+        local budget=240-delta:GetZoomedWidth()-4
+        if notice.nameBudget~=budget then
+         notice.nameBudget=budget
+         notice.displayName=singleLineName(notice.sender,sender,budget,0.7)
+        end
+        sender:settext(notice.displayName)
         delta:diffuse(notice.bpm_delta>0 and color("#ff4040") or color("#39d638"))
         local nw,dw=sender:GetZoomedWidth(),delta:GetZoomedWidth()
         sender:x(-(nw+dw+4)/2)
         delta:x((nw-dw+4)/2)
-        actor:xy(master.actor:GetX(),(rules.lock and 15 or 43)-(#tempoNotices-i)*15)
+        actor:xy(master.actor:GetX(),51-(#tempoNotices-i)*13)
         actor:diffusealpha(math.min(1,(config.tempo_notice_seconds-(now-notice.last_at))/0.12))
        end
       end
@@ -891,19 +897,27 @@ roundedBubbleVertices=function(width,height,radius)
  return vertices
 end
 goldBadgeVertices=function(width,height,radius)
- local stops={{0,color("#946019")},{0.2,color("#e8b94d")},{0.42,color("#fff1b2")},
-              {0.5,color("#ffe6a0")},{0.55,color("#bb8628")},{0.8,color("#d9a93c")},{1,color("#f5d878")}}
+ -- Soft horizontal reflection and subtle brushed bands, rather than a hard
+ -- yellow stripe. The rounded edges carry a darker metal bevel.
  local vertices={}
  local function edge(y)
   local corner=math.max(0,math.abs(y)-(height/2-radius))
   return width/2-radius+math.sqrt(math.max(0,radius*radius-corner*corner))
  end
- for i=1,#stops-1 do
-  local a,b=stops[i],stops[i+1]
-  local ay,by=(a[1]-0.5)*height,(b[1]-0.5)*height
-  local ax,bx=edge(ay),edge(by)
-  local tl,tr,bl,br={{-ax,ay,0},a[2]},{{ax,ay,0},a[2]},{{-bx,by,0},b[2]},{{bx,by,0},b[2]}
-  for _,v in ipairs({tl,bl,tr,tr,bl,br}) do vertices[#vertices+1]=v end
+ local function vertex(column,row)
+  local u,v=column/12,row/16
+  local y=(v-0.5)*height local x=(u*2-1)*edge(y)
+  local reflection=math.exp(-((u-0.5)/0.31)^2)
+  local bevel=(row==0 or row==16) and -0.09 or 0
+  local brush=(row%2==0 and 0.006 or -0.006)
+  local light=reflection*0.27+bevel+brush+(1-v)*0.025
+  return {{x,y,0},{0.56+light,0.49+light,0.31+light*0.85,1}}
+ end
+ for row=0,15 do
+  for col=0,11 do
+   local tl,tr,bl,br=vertex(col,row),vertex(col+1,row),vertex(col,row+1),vertex(col+1,row+1)
+   for _,v in ipairs({tl,bl,tr,tr,bl,br}) do vertices[#vertices+1]=v end
+  end
  end
  return vertices
 end
@@ -922,25 +936,25 @@ af[#af+1]=bpm
 af[#af+1]=Def.ActorFrame{
  Name="StreamLock",
  InitCommand=function(self) lockActor=self self:visible(false) end,
- Def.ActorMultiVertex{Name="Border",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Fan"}):diffuse(color("#5c3908")) end},
+ Def.ActorMultiVertex{Name="Border",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Fan"}):diffuse(color("#806537")) end},
  Def.ActorMultiVertex{Name="Background",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Triangles"}) end},
  Def.ActorFrame{Name="Icon",
   -- A native padlock pictogram avoids unsupported emoji fallback glyphs.
-  Def.Quad{InitCommand=function(self) self:xy(-2.5,-2):zoomto(2,6):diffuse(0,0,0,1) end},
-  Def.Quad{InitCommand=function(self) self:xy(2.5,-2):zoomto(2,6):diffuse(0,0,0,1) end},
-  Def.Quad{InitCommand=function(self) self:y(-5):zoomto(7,2):diffuse(0,0,0,1) end},
+  Def.Quad{InitCommand=function(self) self:xy(-2.5,-2):zoomto(2,6):diffuse(color("#34250e")) end},
+  Def.Quad{InitCommand=function(self) self:xy(2.5,-2):zoomto(2,6):diffuse(color("#34250e")) end},
+  Def.Quad{InitCommand=function(self) self:y(-5):zoomto(7,2):diffuse(color("#34250e")) end},
   Def.ActorMultiVertex{InitCommand=function(self)
    local v=roundedBubbleVertices(9,7,1.5)
-   self:y(2):SetDrawState({Mode="DrawMode_Fan"}):SetNumVertices(#v):SetVertices(v):diffuse(0,0,0,1)
+   self:y(2):SetDrawState({Mode="DrawMode_Fan"}):SetNumVertices(#v):SetVertices(v):diffuse(color("#34250e"))
   end},
   Def.ActorMultiVertex{InitCommand=function(self)
    local v=goldBadgeVertices(7,5,1)
    self:y(2):SetDrawState({Mode="DrawMode_Triangles"}):SetNumVertices(#v):SetVertices(v)
   end},
-  Def.Quad{InitCommand=function(self) self:y(2):zoomto(1,2):diffuse(0,0,0,1) end},
+  Def.Quad{InitCommand=function(self) self:y(2):zoomto(1,2):diffuse(color("#efd992")) end},
  },
- LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(0,0,0,1):strokecolor(0,0,0,0):shadowlength(0) end},
- LoadFont(nameFont)..{Name="Time",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(0,0,0,1):strokecolor(0,0,0,0):shadowlength(0) end},
+ LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(color("#34250e")):strokecolor(0,0,0,0):shadowcolor(color("#ecd799")):shadowlength(0.5) end},
+ LoadFont(nameFont)..{Name="Time",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(color("#34250e")):strokecolor(0,0,0,0):shadowcolor(color("#ecd799")):shadowlength(0.5) end},
 }
 
 af[#af+1]=Def.ActorFrame{
