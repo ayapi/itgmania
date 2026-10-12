@@ -1,4 +1,4 @@
-"""Send note gifts, small BPM bursts, occasional big BPM gifts and locks."""
+"""Send note gifts, random small BPM changes, occasional big gifts and locks."""
 from __future__ import annotations
 
 import argparse
@@ -37,8 +37,8 @@ def main(argv=None):
     parser.add_argument('--notes-max', type=positive, default=6, help='矢印の最長送信間隔（秒）')
     parser.add_argument('--tempo-min', type=positive, default=20, help='±10 BPMの最短送信間隔（秒）')
     parser.add_argument('--tempo-max', type=positive, default=30, help='±10 BPMの最長送信間隔（秒）')
-    parser.add_argument('--small-tempo-min', type=positive, default=0.4, help='+1 BPMの最短送信間隔（秒）')
-    parser.add_argument('--small-tempo-max', type=positive, default=1.2, help='+1 BPMの最長送信間隔（秒）')
+    parser.add_argument('--small-tempo-min', type=positive, default=3, help='±1 BPMの最短送信間隔（秒）')
+    parser.add_argument('--small-tempo-max', type=positive, default=10, help='±1 BPMの最長送信間隔（秒）')
     parser.add_argument('--lock-min', type=positive, default=35, help='ロックの最短送信間隔（秒）')
     parser.add_argument('--lock-max', type=positive, default=55, help='ロックの最長送信間隔（秒）')
     parser.add_argument('--tempo-duration', type=positive, default=30, help='互換引数（Version 3では無視）')
@@ -58,12 +58,10 @@ def main(argv=None):
     playing = False
     last_message = None
     next_notes = next_tempo = next_small = next_lock = math.inf
-    small_sender = None
-    small_remaining = 0
     delta = 10
     log('テスト送信開始。APIとSimply Loveのプレイ開始を待ちます。Ctrl+Cで終了。')
     log(f'矢印: {args.notes_min:g}～{args.notes_max:g}秒ごとに1～3個 / 速度: '
-        f'+1 BPM: {args.small_tempo_min:g}～{args.small_tempo_max:g}秒ごと、同じ人から3～8回ずつ / '
+        f'±1 BPM: {args.small_tempo_min:g}～{args.small_tempo_max:g}秒ごと、+1/-1を各50%で送信 / '
         f'±10 BPM: {args.tempo_min:g}～{args.tempo_max:g}秒ごとに交互 / '
         f'ロック: {args.lock_min:g}～{args.lock_max:g}秒ごと（累積、4小節ごとに減衰）')
     try:
@@ -83,7 +81,6 @@ def main(argv=None):
                         next_tempo = now + random.uniform(args.tempo_min, args.tempo_max)
                         next_small = now + random.uniform(args.small_tempo_min, args.small_tempo_max)
                         next_lock = now + random.uniform(args.lock_min, args.lock_max)
-                        small_remaining = 0
                         delta = 10
                     playing = True
                     message = 'プレイを検出。テストギフトを送ります。'
@@ -105,13 +102,9 @@ def main(argv=None):
                             body['count'] = random.randint(1, min(3, remaining))
                             description = f'{body["sender"]}: 矢印{body["count"]}個'
                         elif action == 'small':
-                            if small_remaining <= 0:
-                                small_sender = body['sender']
-                                small_remaining = random.randint(3, 8)
-                            body.update(sender=small_sender, bpm_delta=1)
-                            small_remaining -= 1
+                            body['bpm_delta'] = random.choice([-1, 1])
                             next_small = now + random.uniform(args.small_tempo_min, args.small_tempo_max)
-                            description = f'{body["sender"]}: +1 BPM'
+                            description = f'{body["sender"]}: {body["bpm_delta"]:+d} BPM'
                         elif action == 'tempo':
                             body.update(bpm_delta=delta)
                             next_tempo = now + random.uniform(args.tempo_min, args.tempo_max)

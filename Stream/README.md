@@ -151,7 +151,7 @@ not reload the player, replace the chart or reset a held note. Invalid batches
 are rejected atomically. Modified plays are disqualified from chart best scores.
 
 `Stream/start-test.cmd` sends test gifts during gameplay.
-It sends +1 BPM every 0.4–1.2 seconds in same-sender bursts of 3–8, alternating
+It sends +1 or -1 BPM with equal probability every 3–10 seconds, alternating
 +10/-10 every 20–30 seconds, and a lock every 35–55 seconds when stock remains.
 Notes still arrive every 3–6 seconds. `--small-tempo-min/max` and `--lock-min/max`
 adjust the new intervals. Rejections show the API reason and do not restart the
