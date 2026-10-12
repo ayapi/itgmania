@@ -1,4 +1,4 @@
-"""OutFox gameplay -> OBS scene-item visibility. Python 3.10+, no extra packages."""
+"""ITGmania gameplay -> OBS visibility and local overlay reconnect."""
 from __future__ import annotations
 import argparse
 import base64
@@ -12,6 +12,7 @@ import struct
 import time
 import uuid
 from urllib.request import urlopen
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 class OBSError(Exception):
     pass
@@ -203,6 +204,7 @@ def main(argv=None):
     filters = set()
     filter_state = {}
     last_message = None
+    last_browser_server_id = None
     def announce(message):
         nonlocal last_message
         if message != last_message: log(message); last_message = message
@@ -217,12 +219,25 @@ def main(argv=None):
                         raise OBSError('OBSの「ツール → WebSocketサーバー設定」でサーバーを有効にして適用してください')
                     obs = OBSWebSocket(args.obs_host, args.obs_port or config.get('server_port', 4455), config.get('server_password', ''))
                     filter_state.clear()
+                    last_browser_server_id = None
                 try:
                     with urlopen(args.api_url.rstrip('/')+'/api/status', timeout=1) as response: status = json.load(response)
                     playing = bool(status.get('ready'))
                     reason = 'プレイ中' if playing else '選曲中・終了・ポーズなど'
+                    server_id = status.get('api_server_id')
+                    if server_id and server_id != last_browser_server_id:
+                        try:
+                            browser = obs.call('GetInputSettings', dict(inputName='ITGmania 配信情報'))
+                            url = browser['inputSettings'].get('url', '')
+                            if browser.get('inputKind') == 'browser_source' and url.startswith(args.api_url.rstrip('/')+'/overlay'):
+                                parts=urlsplit(url); query=dict(parse_qsl(parts.query));query['v']=server_id
+                                refreshed=urlunsplit((parts.scheme,parts.netloc,parts.path,urlencode(query),parts.fragment))
+                                obs.call('SetInputSettings',dict(inputName='ITGmania 配信情報',inputSettings=dict(url=refreshed),overlay=True))
+                        except (OBSError, KeyError):
+                            pass  # An optional browser source may not exist.
+                        last_browser_server_id = server_id
                 except (OSError, ValueError):
-                    playing, reason = False, 'OutFox API未接続（start-api.cmdを確認）'
+                    playing, reason = False, 'ITGmania API未接続（start-api.cmdを確認）'
                 items = target_items(obs, args.source, args.scene)
                 name = items[0]['name']
                 if name not in filter_state:

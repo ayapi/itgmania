@@ -11,7 +11,7 @@ def install(root):
     overlay = theme/'BGAnimations/ScreenGameplay overlay'
     if not (overlay/'default.lua').is_file():
         raise SystemExit('Simply Love is missing from '+str(root))
-    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'StreamArrowFade.lua', 'StreamEdgeFade.lua', 'StreamMirror.lua'):
+    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'GiftRules.lua', 'StreamArrowFade.lua', 'StreamEdgeFade.lua', 'StreamMirror.lua'):
         shutil.copy2(source/name, overlay/name)
     path = overlay/'default.lua'
     text = path.read_text(encoding='utf-8-sig')
@@ -95,6 +95,7 @@ end
     compact_judgments(root)
     (root/'start-game.cmd').write_bytes(
         b'@echo off\r\ncd /d "%~dp0"\r\n'
+        b'python Stream\\start_api_background.py\r\n'
         b'python Stream\\start_obs_background.py\r\n'
         b'python Stream\\start_game_background.py\r\n')
     print('Installed streaming/gifts into '+str(root))

@@ -11,7 +11,7 @@ def install(root, archive):
         data = z.read('Beast Machines.TTF')
     directory = root / 'Themes/Simply Love/Fonts'
     directory.mkdir(parents=True, exist_ok=True)
-    characters = 'BPM0123456789.'
+    characters = 'BPM0123456789.+-()'
     for name, color in [('Base', '#48d9ff'), ('Up', '#ff4040'), ('Down', '#39d638')]:
         atlas = Image.new('RGBA', (96*len(characters), 64))
         widths = []
@@ -21,7 +21,11 @@ def install(root, archive):
             atlas.alpha_composite(glyph, (index*96+(96-glyph.width)//2, (64-glyph.height)//2))
             widths.append(f'{index}={(glyph.width+1)//2+3}')
         prefix = 'Stream BPM '+name
-        atlas.save(directory / f'{prefix} {len(characters)}x1 (doubleres).png')
+        filename = f'{prefix} {len(characters)}x1 (doubleres).png'
+        for old in directory.glob(f'{prefix} *x1 (doubleres).png'):
+            if old.name != filename:
+                old.unlink()  # Only our obsolete generated page, not user fonts.
+        atlas.save(directory / filename)
         (directory / (prefix+'.ini')).write_text(
             '[Char Widths]\nline 0='+characters+'\nDefaultWidth=30\nAdvanceExtraPixels=-3\n'+
             '\n'.join(widths)+'\n', encoding='utf-8')

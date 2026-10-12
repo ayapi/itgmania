@@ -36,17 +36,18 @@ the browser tempo list uses two-pixel row gaps and sits closer to native BPM.
 
 Start `Stream/start-api.cmd` for the local HTTP server on port 8765. Close the
 old OutFox API server first when switching to this runtime. The request format
-is unchanged:
+uses these endpoints:
 
 - `POST /api/notes`: `{"sender":"viewer","count":3,"player":"P1"}`
-- `POST /api/tempo`: `{"sender":"viewer","bpm_delta":10,"duration_seconds":20}`
+- `POST /api/tempo`: `{"sender":"viewer","bpm_delta":10}`
+- `POST /api/lock`: `{"sender":"viewer","measures":4}`
 - `GET /api/status` and `GET /api/events/<event_id>` report readiness and results.
 
 For OBS stream information, add a browser source with URL
 `http://127.0.0.1:8765/overlay` (portrait canvas: 1080 × 1920, 30 FPS).
 Keep the API bridge running. The page polls status four times per second,
-displays song title/artist and individually active tempo
-gifts with their sender and BPM delta. It is transparent
+displays song title/artist, stock, and recent tempo gifts with their sender and
+BPM delta. It is transparent
 outside the text/labels and hides when gameplay is inactive or the
 heartbeat is disconnected. Edit `Stream/overlay.html` to adjust appearance.
 
@@ -72,17 +73,77 @@ from the Beast font importer. Install these assets before loading GiftAPI.lua.
 Streaming judgment movement takes 30 ms on entry and 70 ms on exit, while
 retaining the 0.6-second readable hold. The installer applies this theme patch.
 
-The status response adds `song_title`, `song_artist`, and
-`active_tempo_effects`, a list of `{event_id, sender, bpm_delta,
-remaining_seconds}` objects. Existing fields and gift endpoints remain
-compatible. A new gameplay screen reloads the updated theme actor.
+The status response retains song fields and `active_tempo_effects` as an empty
+legacy array. Version 3 uses `tempo_feed` instead of expiring effects. A new
+gameplay screen reloads the updated theme actor.
 
-Tempo deltas add together and each effect expires independently. Audio and note
-timing use the same native music rate. Names follow their notes in a right-hand
-column, wrap to two lines and truncate with `...`. They have opaque white
-backgrounds and black text. Gift taps use eighth-note rows by default; a backlog
-of 48 or more taps enables sixteenth-note rows. Existing notes and hold/roll
-occupancy count toward the two-foot limit.
+## Version 3 gift economy and gameplay
+
+Tempo gifts are integer, cumulative changes to one song offset. They apply on
+the next beat, persist without individual timers, and reset at the next song.
+After four unlocked measures without another applied tempo gift, the offset
+moves one BPM towards zero. Applied speed is limited to ±15% of the chart BPM
+(rounded down to a whole BPM). Excess is retained internally, initially up to
+±50% of the chart BPM. Beyond that limit, the API rejects the gift with a reason;
+reducing an existing overflow remains possible after a chart BPM change.
+`duration_seconds` is accepted as a deprecated compatibility field and ignored.
+
+A lock fixes the current effective BPM for four measures per 500-yen block.
+During it, decay pauses and tempo gifts are held. On release, held gifts apply
+together before any reserved next lock starts. Lock inventory counts complete
+blocks that still fit in the song, accounting for active and reserved locks.
+Time-signature changes are supported. For charts with a large BPM change during
+a lock, the ±15% safety limit takes priority over the locked numeric BPM.
+
+NOTE ATTACK inventory is planned from the actual chart on eighth-note positions.
+The planner considers holds, existing notes within half a beat, mines, two-foot
+limits, and previous/next jump rows. It never introduces consecutive jumps.
+The original chart is preserved. A gift reserves its count, shows immediate OBS
+receipt feedback, then places real judged taps just below the visible field.
+Unavailable insertion is retried rather than forcing a hold reset. Queues never
+fall back to sixteenths. Stock shrinks as unused positions pass; sold-out or
+oversized requests receive HTTP 409. Six visible cards, three per direction
+group, remain the display limit.
+
+Native HUD shows `BPM115(+7)`, a beat-synchronized pulse, active lock sender and
+remaining seconds, and a compact life gauge. Standard ITGmania `EndOfSong`
+failure mode keeps the song running through zero life and uses the engine's
+existing end-of-song CLEAR/FAILED result. Combo and native note judgments remain.
+Gift-modified scores do not replace the original chart's personal bests.
+
+OBS keeps song information, NOTE ATTACK on the left, BPM ATTACK / LOCK on the
+right, and both remaining counts or SOLD OUT. Tempo senders appear briefly at
+application time, with consecutive repeats grouped as `A +1 ×5`. Notifications
+expire after four seconds; a lock-held gift is announced when actually applied.
+The prices are initial display guidance: 10–20 / 50 / 100 yen equivalents for
+±1 / ±5 / ±10, 100 yen per note, and 500 yen per four-measure lock.
+
+Gift ID, coins, currency conversion and action selection stay with the caller
+(e.g. OneComme). Optional API fields `platform`, `gift_id`, `amount_yen`, `coins`
+and `viewer_count` are validated and recorded but do not alter the game effect.
+No platform gift is assigned or charged by this API. Supply a unique `event_id`
+to prevent duplicate delivery, and check `/api/events/<event_id>` for final
+acceptance/completion. Receipt history is rotated in bounded status pages during
+large bursts; lock completion IDs also resolve held-event receipts.
+
+`Save/GiftAPI/config.json` exposes `tempo_limit_percent` (at most 0.15),
+`tempo_stored_limit_percent` (initially 0.50), `tempo_decay_measures` (4),
+`lock_min_measures` (4), and `tempo_notice_seconds` (4). Restart the bridge and
+start a new song after editing configuration. The native status includes
+`protocol_version: 3`, `bpm_offset`, `bpm_delta` (applied), `bpm_overflow`,
+`pending_bpm_delta`, `bpm_lock`, `note_slots_total`, `note_remaining`,
+`lock_remaining`, `life`, `failed`, `tempo_feed`, and `metrics`.
+
+Local records are saved in `Save/GiftAPI/stream-metrics.jsonl`: accepted/rejected
+gifts, receipt outcomes, BPM/overflow evolution, cap duration, lock use, note
+inventory/consumption, life, combo breaks, native judgment/hold totals and failure result. Supplied price metadata
+allows analysis by amount band without using viewer count as a safety control.
+These personal stream records and locally generated fonts are excluded from Git.
+
+Audio and note timing use the same native music rate. Names use stationary
+cards with leaders following their notes, wrap to two lines and truncate with
+`...`. They have opaque white backgrounds and black text. Existing notes and
+hold/roll occupancy count toward the two-foot limit.
 
 `Player:AddGiftTapNotes({{beat,column},...})` inserts only future taps, retains
 the existing note results and reconstructs the affected iterator cursors. It does
@@ -92,7 +153,10 @@ are rejected atomically. Modified plays are disqualified from chart best scores.
 `Stream/start-test.cmd` sends test gifts during gameplay.
 `Stream/start-obs-sync.cmd` controls OBS opacity without stopping game capture;
 Ctrl+C restores the prior source state and removes the temporary filter.
-The installed `start-game.cmd` also starts this OBS controller in the background.
+The installed `start-game.cmd` starts the API bridge and this OBS controller in
+the background. `/api/info` identifies the API version and runtime directory;
+the launcher reuses a matching server. The OBS controller refreshes the local
+browser source after a bridge restart while preserving its URL layout settings.
 Only one controller runs per OBS server. A restart removes leftover controller
 filters after an interrupted shutdown, without removing chroma key, crop or
 other user filters.

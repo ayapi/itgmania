@@ -1,8 +1,11 @@
 -- ITGmania streaming fork / Simply Love. All gameplay mutations run on the game thread.
 local json = dofile(THEME:GetCurrentThemeDirectory().."BGAnimations/ScreenGameplay overlay/GiftAPI.Json.lua")
+local Rules = dofile(THEME:GetCurrentThemeDirectory().."BGAnimations/ScreenGameplay overlay/GiftRules.lua")
 local directory = "Save/GiftAPI/"
 local config = {max_active_arrows=24, max_queued_arrows=512, max_tempo_effects=128,
-                min_rate=0.25, max_rate=3, sixteenth_backlog_threshold=48, min_lead_seconds=0.8}
+                min_rate=0.25, max_rate=3, min_lead_seconds=0.8,
+                tempo_limit_percent=0.15,tempo_stored_limit_percent=0.50,
+                tempo_decay_measures=4,lock_min_measures=4,tempo_notice_seconds=4}
 local packetCache={}
 local screen
 local performance={max_update_ms=0,max_insert_ms=0,slow_updates=0}
@@ -48,11 +51,15 @@ config.max_active_arrows=math.min(64,math.floor(config.max_active_arrows))
 config.max_queued_arrows=math.min(2048,math.floor(config.max_queued_arrows))
 config.min_rate=math.max(0.1,config.min_rate)
 config.max_rate=math.min(3,math.max(config.min_rate,config.max_rate))
-config.sixteenth_backlog_threshold=math.max(1,math.floor(config.sixteenth_backlog_threshold))
+config.tempo_limit_percent=math.min(0.15,config.tempo_limit_percent)
+config.tempo_stored_limit_percent=math.max(config.tempo_limit_percent,config.tempo_stored_limit_percent)
 
 local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}, results={}, players={}}
+local noteFeed={}
 local byname, containers, bubbleActors={}, {}, {}
 local bpmActor
+local rules,lockActor,lifeActor
+local inventoryTotal=0
 local nextLabelOrder=0
 local roundedBubbleVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
@@ -60,6 +67,8 @@ local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
 local resultById={}
 local lastReadyFrame
+local lastMetricFrame
+local resultPage=0
 local function noteKey(beat,column) return tostring(math.floor(beat*48+0.5))..":"..column end
 local function scored(note)
  return note[3]=="TapNoteType_Tap" or note[3]=="TapNoteType_Lift" or note[3]=="TapNoteType_HoldHead" or note[3]=="TapNoteSubType_Hold" or note[3]=="TapNoteSubType_Roll"
@@ -78,7 +87,7 @@ local function result(command, status, message)
  local r={event_id=command.event_id, state=status, reason=message or "", inserted=command.inserted or 0}
  state.results[#state.results+1]=r
  resultById[command.event_id]=r
- while #state.results>512 do
+ while #state.results>10000 do
   local old=table.remove(state.results,1)
   if resultById[old.event_id]==old then resultById[old.event_id]=nil end
  end
@@ -106,12 +115,57 @@ local function snapshot(ready, message)
   for key in pairs(p.original or {}) do originalTotal=originalTotal+1 if p.processed[key] then originalJudged=originalJudged+1 end end
   for _,note in ipairs(p.originalData or {}) do if note.length and note.length>0 then holds=holds+1 end end
  end
- write(directory.."status.json",{ready=ready,reason=message or "",session=state.session,
-  server_id=state.server_id,cursor=state.cursor,players=state.players,results=state.results,
+ local available=0
+ for _,p in pairs(byname) do available=available+(p.planAvailable or 0) end
+ local lockStatus=nil
+ if rules and rules.lock then
+  local l=rules.lock
+  local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
+  local remaining=(master.timing:GetElapsedTimeFromBeat(l.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate
+  lockStatus={sender=l.sender,event_id=l.event_id,remaining_seconds=math.max(0,remaining),end_beat=l.endBeat,
+   queued=#rules.locks,bpm=l.bpm}
+ end
+ local life,failed=1,false
+ local masterNumber=GAMESTATE:GetMasterPlayerNumber()
+ local meter=screen and screen:GetLifeMeter(masterNumber)
+ if meter then life=meter:GetLife() end
+ local stats=STATSMAN:GetCurStageStats():GetPlayerStageStats(masterNumber)
+ failed=stats:GetFailed()
+ local segments=0
+ for _,combo in ipairs(stats:GetComboList()) do if combo.Count>0 then segments=segments+1 end end
+ local judgments={}
+ for _,name in ipairs({"W1","W2","W3","W4","W5","Miss"}) do
+  judgments[name]=stats:GetTapNoteScores("TapNoteScore_"..name)
+ end
+ judgments.Held=stats:GetHoldNoteScores("HoldNoteScore_Held")
+ judgments.LetGo=stats:GetHoldNoteScores("HoldNoteScore_LetGo")
+ -- Rotate bounded receipt pages. Held/queued events keep their final
+ -- outcome even during a busy lock, without serializing all history at 60fps.
+ local receipts={}
+ if #state.results>0 then
+  resultPage=resultPage%#state.results
+  for i=1,math.min(512,#state.results) do receipts[i]=state.results[(resultPage+i-1)%#state.results+1] end
+  resultPage=(resultPage+#receipts)%#state.results
+ end
+ write(directory.."status.json",{protocol_version=3,ready=ready,reason=message or "",session=state.session,
+  server_id=state.server_id,cursor=state.cursor,players=state.players,results=receipts,
   song=song and song:GetDisplayMainTitle() or "", base_bpm=currentBpm,
   song_title=song and song:GetDisplayFullTitle() or "",
   song_artist=song and song:GetDisplayArtist() or "",
   active_tempo_effects=tempoEffects,
+  tempo_feed=rules and rules.feed or {},bpm_offset=rules and rules.offset or 0,
+  note_feed=noteFeed,
+  pending_bpm_delta=rules and rules.pendingDelta or 0,
+  bpm_offset_limit=rules and rules:limit(currentBpm) or 0,
+  bpm_stored_limit=rules and rules:storedLimit(currentBpm) or 0,
+  bpm_overflow=rules and math.max(0,math.abs(rules.offset)-rules:limit(currentBpm)) or 0,
+  bpm_lock=lockStatus,lock_min_measures=config.lock_min_measures,
+  completed_locks=rules and rules.completedLocks or {},
+  lock_remaining=rules and rules:remainingLocks(GAMESTATE:GetSongPosition():GetSongBeat()) or 0,
+  note_slots_total=inventoryTotal,note_remaining=math.max(0,available-queueCount()),
+  life=life,failed=failed,metrics=rules and rules.metrics or {},
+  current_combo=stats:GetCurrentCombo(),max_combo=stats:MaxCombo(),
+  combo_breaks=math.max(0,segments-(stats:GetCurrentCombo()>0 and 1 or 0)),judgments=judgments,
   stream_mirror=SL.StreamMirrorOffsetX~=nil,
   stream_mirror_offset_pixels=(SL.StreamMirrorOffsetX or 0)*DISPLAY:GetDisplayWidth()/SCREEN_WIDTH,
   bpm_delta=totalDelta, effective_bpm=currentBpm*effectiveRate, rate=effectiveRate,
@@ -123,7 +177,7 @@ local function snapshot(ready, message)
   fps=DISPLAY:GetFPS(),
   song_beat=GAMESTATE:GetSongPosition():GetSongBeat(),
   music_seconds=GAMESTATE:GetSongPosition():GetMusicSeconds(),
-  saturated=effectiveRate==config.min_rate or effectiveRate==config.max_rate})
+  saturated=rules and math.abs(totalDelta)>=rules:limit(currentBpm) or false})
 end
 local function songOptions(level) return GAMESTATE:GetSongOptionsObject(level) end
 local function applyRate(rate)
@@ -164,6 +218,7 @@ local function initialize()
   reason="GiftAPI supports dance-single (4 arrows)" return false
  end
  byname={}
+ inventoryTotal=0
  state.players={}
  for _,pn in ipairs(GAMESTATE:GetHumanPlayers()) do
   local name=ToEnumShortString(pn)
@@ -182,6 +237,19 @@ local function initialize()
    if note[3]=="TapNoteType_Mine" and p.timing:IsJudgableAtBeat(note[1]) then p.mineTimes[#p.mineTimes+1]=p.timing:GetElapsedTimeFromBeat(note[1]) end
   end
   p.tracked=track(p.originalData,p.timing) p.processed={} p.original={} p.pendingIndex=1
+  p.lastBeat=0
+  for _,n in ipairs(p.originalData) do p.lastBeat=math.max(p.lastBeat,n[1]+(n.length or 0)) end
+  p.notePlan=Rules.notePlan(p.originalData,p.lastBeat,function(beat)
+   if not p.timing:IsJudgableAtBeat(beat) then return false end
+   local seconds=p.timing:GetElapsedTimeFromBeat(beat)
+   for _,mine in ipairs(p.mineTimes) do if math.abs(seconds-mine)<0.2 then return false end end
+   return true
+  end)
+  p.planAvailable=#p.notePlan p.planCursor=1
+  inventoryTotal=inventoryTotal+#p.notePlan
+  for _,level in ipairs({"ModsLevel_Stage","ModsLevel_Song","ModsLevel_Current"}) do
+   ps:GetPlayerOptions(level):FailSetting("FailType_EndOfSong")
+  end
   for _,note in ipairs(p.tracked) do p.original[noteKey(note[1],note[2])]=true end
   state.players[#state.players+1]=name
  end
@@ -191,6 +259,10 @@ local function initialize()
  state.session=tostring(GetTimeSinceStart()).."-"..tostring(math.random(1,100000000))
  state.effects={} state.queue={} state.active={} state.results={} resultById={}
  state.cursor=0 state.server_id=""
+ local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
+ local lastBeat=master.timing:GetBeatFromElapsedTime(song:GetLastSecond())
+ rules=Rules.new(config,lastBeat,master.timing:GetTimeSignatures(true),function(beat) return master.timing:GetBPMAtBeat(beat) end)
+ GAMESTATE:SetFailTypeExplicitlySet()
  initialized=true stopped=false reason=""
  return true
 end
@@ -205,21 +277,24 @@ local function consume(now)
    state.cursor=command.sequence
    if command.session~=state.session then
     result(command,"discarded","Command belongs to another song")
-   elseif command.kind=="tempo" then
-    if #state.effects>=config.max_tempo_effects then
-     result(command,"rejected","Too many tempo effects")
-    else
+   elseif command.kind=="tempo" or command.kind=="lock" then
+    local accepted,why=rules:submit(command,GAMESTATE:GetSongPosition():GetSongBeat())
+    if accepted then
      modified()
-     state.effects[#state.effects+1]={delta=command.bpm_delta,expires=now+command.duration_seconds,event_id=command.event_id,sender=command.sender}
-     result(command,"active")
-    end
+     result(command,"queued")
+    else result(command,"rejected",why) end
    elseif command.kind=="notes" then
     if not byname[command.player] then result(command,"rejected","Player is unavailable")
+    elseif command.count>math.max(0,byname[command.player].planAvailable-queueCount()) then result(command,"rejected","NOTE ATTACK SOLD OUT")
     elseif queueCount()+command.count>config.max_queued_arrows then result(command,"rejected","Arrow queue is full")
     else
      modified()
      command.remaining=command.count command.inserted=0
+     rules.metrics.note_gifts=(rules.metrics.note_gifts or 0)+1
+     rules.metrics.note_units_accepted=(rules.metrics.note_units_accepted or 0)+command.count
      state.queue[#state.queue+1]=command
+     noteFeed[#noteFeed+1]={event_id=command.event_id,sender=command.sender,count=command.count,last_at=now}
+     while #noteFeed>3 do table.remove(noteFeed,1) end
      result(command,"queued")
     end
    else result(command,"rejected","Unknown command") end
@@ -227,23 +302,20 @@ local function consume(now)
  end
 end
 local function updateTempo(now)
- totalDelta=0
- for i=#state.effects,1,-1 do
-  local effect=state.effects[i]
-  if now>=effect.expires then
-   local r=resultById[effect.event_id]
-   if r then r.state="expired" end
-   table.remove(state.effects,i)
-  else totalDelta=totalDelta+effect.delta end
- end
  local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
  if not master then return end
  local beat=master.ps:GetSongPosition():GetSongBeat()
  currentBpm=master.timing:GetBPMAtBeat(beat)
+ rules:step(beat,now)
+ for id,event in pairs(rules.changes) do
+  local r=resultById[id] if r then r.state=event.state r.reason=event.reason r.lock_event_id=event.lock_event_id end
+ end
+ rules.changes={}
  if currentBpm>0 then
-  local rate=baseline+totalDelta/currentBpm
-  rate=math.max(config.min_rate,math.min(config.max_rate,rate))
-  applyRate(rate)
+  local limit=rules:limit(currentBpm)
+  local bpm=math.max(currentBpm-limit,math.min(currentBpm+limit,rules:bpm(currentBpm)))
+  totalDelta=bpm-currentBpm
+  applyRate(bpm/currentBpm)
  end
 end
 local function geometry(p, beat, column)
@@ -255,6 +327,32 @@ local function geometry(p, beat, column)
  local zx=p.field and p.field:GetZoomX() or 1
  local zy=p.field and p.field:GetZoomY() or 1
  return fx+x*zx,fy+y*zy,yoffset
+end
+local function refreshInventory()
+ for _,p in pairs(byname) do
+  local pos=p.ps:GetSongPosition()
+  local first=pos:GetSongBeat()+math.max(0.5,currentBpm*effectiveRate/60*config.min_lead_seconds)
+  while p.notePlan and p.notePlan[p.planCursor] do
+   local n=p.notePlan[p.planCursor]
+   if n.used then p.planCursor=p.planCursor+1
+   else
+    local _,y=geometry(p,n.beat,n.column)
+    local screenY=p.actor:GetY()+y*p.actor:GetZoomY()
+    if n.beat<first or screenY<SCREEN_HEIGHT-12 then
+     n.used=true p.planAvailable=p.planAvailable-1 p.planCursor=p.planCursor+1
+    else break end
+   end
+  end
+ end
+end
+local function plannedSlot(p,sideCounts,selected)
+ for i=p.planCursor,#p.notePlan do
+  local n=p.notePlan[i]
+  local side=n.column>=3 and 1 or 2
+  if not n.used and not selected[i] and (not sideCounts or sideCounts[side]<3) then
+   return n.beat,n.column,i
+  end
+ end
 end
 local function occupancyIndex(data)
  local index={rows={},holds={},lastBeat=0}
@@ -286,7 +384,7 @@ local function occupancyAt(index,beat)
  return occupied,feet
 end
 local function giftGrid(backlog)
- return backlog>=config.sixteenth_backlog_threshold and 0.25 or 0.5
+ return 0.5 -- Version 3 inventory is eighth-note only, even during a backlog.
 end
 -- P1 columns 3/4 become down/left in the reversed stream copy.
 local function bubbleSide(column) return column>=3 and 1 or 2 end
@@ -342,6 +440,7 @@ local function insertNotes()
  local data=p.actor:GetNoteData()
  local index=occupancyIndex(data)
  local added={}
+ local selected={}
  local sideCounts
  if PREFSMAN:GetPreference("StreamerMode") then
   sideCounts={0,0}
@@ -351,18 +450,16 @@ local function insertNotes()
  end
  local grid=giftGrid(queueCount())
  while command.remaining>0 and #added<4 and activeCount()+#added<capacity do
-  local beat,col=slot(p,index,grid,sideCounts)
+  local beat,col,planIndex=plannedSlot(p,sideCounts,selected)
   if not beat then
-   if sideCounts and (sideCounts[1]>=3 or sideCounts[2]>=3) then break end
-   local r=resultById[command.event_id]
-   if r then r.state="partial" r.reason="No room before the end of the chart" end
-   table.remove(state.queue,1) break
+   break -- Keep accepted notes queued and retry as active cards clear.
   end
   data[#data+1]={beat,col,"TapNoteType_Tap",grid==0.5 and "TapNote_8th" or "TapNote_16th"}
   local row=math.floor(beat*48+0.5)
   index.rows[row]=index.rows[row] or {occupied={},feet={}}
   index.rows[row].occupied[col]=true index.rows[row].feet[col]=true
-  added[#added+1]={beat=beat,column=col,player=command.player,sender=command.sender,event_id=command.event_id,done=false}
+  selected[planIndex]=true
+  added[#added+1]={beat=beat,column=col,planIndex=planIndex,player=command.player,sender=command.sender,event_id=command.event_id,done=false}
   if sideCounts then local side=bubbleSide(col) sideCounts[side]=sideCounts[side]+1 end
   command.remaining=command.remaining-1
  end
@@ -378,9 +475,11 @@ local function insertNotes()
   p.pendingPoints=(p.pendingPoints or 0)+#added*THEME:GetMetric("ScoreKeeperNormal","PercentScoreWeightW1")
   updatePointLimits()
   for _,note in ipairs(added) do
+   p.notePlan[note.planIndex].used=true p.planAvailable=p.planAvailable-1
    nextLabelOrder=nextLabelOrder+1 note.labelOrder=nextLabelOrder
    state.active[#state.active+1]=note
   end
+  rules.metrics.note_units_inserted=(rules.metrics.note_units_inserted or 0)+#added
   command.inserted=command.inserted+#added
   local r=resultById[command.event_id]
   if r then r.inserted=command.inserted end
@@ -576,7 +675,7 @@ end
 local function finish(message)
  for _,note in ipairs(state.active) do hide(note) end
  for _,r in ipairs(state.results) do
-  if r.state=="queued" or r.state=="active" then r.state="discarded" r.reason=message end
+  if r.state=="queued" or r.state=="active" or r.state=="held" or r.state=="reserved" then r.state="discarded" r.reason=message end
  end
  state.active={} state.queue={} state.effects={}
  totalDelta=0
@@ -599,6 +698,8 @@ local af=Def.ActorFrame{
    end
   end
   if bpmActor and bpmActor:GetVisible() then bpmActor:Draw() end
+  if lockActor and lockActor:GetVisible() then lockActor:Draw() end
+  if lifeActor and lifeActor:GetVisible() then lifeActor:Draw() end
  end,
  OnCommand=function(self)
   initialize()
@@ -623,13 +724,19 @@ local af=Def.ActorFrame{
      end
      lastReadyFrame=now
     else lastReadyFrame=nil end
+    measured("max_tempo_ms",function() updateTempo(now) end)
+    for i=#noteFeed,1,-1 do if now-noteFeed[i].last_at>2 then table.remove(noteFeed,i) end end
+    if ready and lastMetricFrame and math.abs(totalDelta)>=rules:limit(currentBpm) and totalDelta~=0 then
+     rules.metrics.cap_seconds=rules.metrics.cap_seconds+math.max(0,now-lastMetricFrame)
+    end
+    lastMetricFrame=ready and now or nil
+    refreshInventory()
     if ready and now-lastPoll>=0.1 then measured("max_commands_ms",function() consume(now) end) lastPoll=now end
     if ready then
      local started=GetTimeSinceStart()
      insertNotes()
      performance.max_insert_ms=math.max(performance.max_insert_ms,(GetTimeSinceStart()-started)*1000)
     end
-    measured("max_tempo_ms",function() updateTempo(now) end)
     if bpmActor then
      local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
      bpmActor:visible(ready and master~=nil)
@@ -638,10 +745,24 @@ local af=Def.ActorFrame{
       local pulse=1+0.12*math.exp(-phase*12)
       bpmActor:xy(master.actor:GetX(),68):zoom(pulse)
       local bpm=currentBpm*effectiveRate
-      local color=bpm>currentBpm+0.01 and "Up" or bpm<currentBpm-0.01 and "Down" or "Base"
+      local colorName=bpm>currentBpm+0.01 and "Up" or bpm<currentBpm-0.01 and "Down" or "Base"
       local value=string.format("%.1f",bpm):gsub("%.0$","")
       for _,name in ipairs({"Base","Up","Down"}) do
-       bpmActor:GetChild(name):visible(name==color):settext("BPM"..value)
+       bpmActor:GetChild(name):visible(name==colorName):settext("BPM"..value.."("..string.format("%+.0f",totalDelta)..")")
+      end
+      if lockActor then
+       local lock=rules.lock
+       lockActor:xy(master.actor:GetX(),39):visible(lock~=nil and ready)
+       if lock then
+        local seconds=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-pos:GetMusicSeconds())/effectiveRate)
+        lockActor:settext("LOCK "..lock.sender.." "..string.format("%.1f",seconds).."s")
+       end
+      end
+      if lifeActor then
+       local meter=screen:GetLifeMeter(master.pn)
+       local life=meter and meter:GetLife() or 1
+       lifeActor:xy(master.actor:GetX(),23):visible(ready)
+       lifeActor:GetChild("Fill"):zoomto(128*math.max(0,life),3):diffuse(life<0.25 and color("#ff4040") or color("#39d638"))
       end
      end
     end
@@ -690,10 +811,20 @@ for _,name in ipairs({"Base","Up","Down"}) do
  local hasFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream BPM "..name..".ini")
  bpm[#bpm+1]=LoadFont(hasFont and "Stream BPM "..name or "Common Normal")..{
   Name=name,
-  InitCommand=function(self) self:zoom(0.8):diffuse(1,1,1,1):shadowlength(0):visible(false) end,
+  InitCommand=function(self) self:zoom(0.8):maxwidth(115/0.8):diffuse(1,1,1,1):shadowlength(0):visible(false) end,
  }
 end
 af[#af+1]=bpm
+af[#af+1]=LoadFont("Common Normal")..{
+ Name="StreamLock",
+ InitCommand=function(self) lockActor=self self:zoom(0.5):maxwidth(128/0.5):diffuse(1,1,1,1):shadowlength(1):visible(false) end,
+}
+af[#af+1]=Def.ActorFrame{
+ Name="StreamLife",
+ InitCommand=function(self) lifeActor=self self:visible(false) end,
+ Def.Quad{InitCommand=function(self) self:zoomto(130,5):diffuse(0,0,0,0.7) end},
+ Def.Quad{Name="Fill",InitCommand=function(self) self:halign(0):x(-64):zoomto(128,3):diffuse(0.2,0.8,0.2,1) end},
+}
 for i=1,config.max_active_arrows do
  local index=i
  af[#af+1]=Def.ActorFrame{

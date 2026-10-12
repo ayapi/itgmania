@@ -37,7 +37,7 @@ def main(argv=None):
     parser.add_argument('--notes-max', type=positive, default=6, help='矢印の最長送信間隔（秒）')
     parser.add_argument('--tempo-min', type=positive, default=20, help='速度の最短送信間隔（秒）')
     parser.add_argument('--tempo-max', type=positive, default=30, help='速度の最長送信間隔（秒）')
-    parser.add_argument('--tempo-duration', type=positive, default=30, help='各速度効果の持続時間（秒）')
+    parser.add_argument('--tempo-duration', type=positive, default=30, help='互換引数（Version 3では無視）')
     parser.add_argument('--run-seconds', type=positive, help='指定秒数で自動終了（通常は無制限）')
     args = parser.parse_args(argv)
     if args.notes_min > args.notes_max or args.tempo_min > args.tempo_max:
@@ -54,7 +54,7 @@ def main(argv=None):
     delta = 10
     log('テスト送信開始。APIとSimply Loveのプレイ開始を待ちます。Ctrl+Cで終了。')
     log(f'矢印: {args.notes_min:g}～{args.notes_max:g}秒ごとに1～3個 / 速度: '
-        f'{args.tempo_min:g}～{args.tempo_max:g}秒ごとに+10/-10 BPMを交互に送信、各{args.tempo_duration:g}秒')
+        f'{args.tempo_min:g}～{args.tempo_max:g}秒ごとに+10/-10 BPMを交互に送信（累積、4小節ごとに減衰）')
     try:
         while time.monotonic() < deadline:
             try:
@@ -84,9 +84,9 @@ def main(argv=None):
                             next_notes = now + random.uniform(args.notes_min, args.notes_max)
                             description = f'{body["sender"]}: 矢印{body["count"]}個'
                         else:
-                            body.update(bpm_delta=delta, duration_seconds=args.tempo_duration)
+                            body.update(bpm_delta=delta)
                             next_tempo = now + random.uniform(args.tempo_min, args.tempo_max)
-                            description = f'速度{delta:+d} BPM / {args.tempo_duration:g}秒'
+                            description = f'速度{delta:+d} BPM'
                         result = request_json(base + '/api/' + kind, body)
                         log(f'送信受付: {description} ({result.get("state", "unknown")})')
                         if kind == 'tempo':
@@ -106,7 +106,7 @@ def main(argv=None):
             time.sleep(min(0.5, max(0, deadline - time.monotonic())))
     except KeyboardInterrupt:
         pass
-    log('テスト送信終了。送信済みの速度効果は、それぞれの期限で終了します。')
+    log('テスト送信終了。BPMオフセットは減衰し、次の曲で0になります。')
 
 
 if __name__ == '__main__':
