@@ -1,4 +1,4 @@
-"""Send occasional test gifts to the local OutFox API (Python 3.10+)."""
+"""Send note gifts, small BPM bursts, occasional big BPM gifts and locks."""
 from __future__ import annotations
 
 import argparse
@@ -30,17 +30,24 @@ def positive(value):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='OutFoxにテスト用の矢印・速度ギフトを送ります。Ctrl+Cで終了。')
+    parser = argparse.ArgumentParser(description='ITGmaniaにテスト用の矢印・BPM・ロックギフトを送ります。Ctrl+Cで終了。')
     parser.add_argument('--url', default='http://127.0.0.1:8765', help='APIのURL')
     parser.add_argument('--player', choices=['P1', 'P2'], default='P1')
     parser.add_argument('--notes-min', type=positive, default=3, help='矢印の最短送信間隔（秒）')
     parser.add_argument('--notes-max', type=positive, default=6, help='矢印の最長送信間隔（秒）')
-    parser.add_argument('--tempo-min', type=positive, default=20, help='速度の最短送信間隔（秒）')
-    parser.add_argument('--tempo-max', type=positive, default=30, help='速度の最長送信間隔（秒）')
+    parser.add_argument('--tempo-min', type=positive, default=20, help='±10 BPMの最短送信間隔（秒）')
+    parser.add_argument('--tempo-max', type=positive, default=30, help='±10 BPMの最長送信間隔（秒）')
+    parser.add_argument('--small-tempo-min', type=positive, default=0.4, help='+1 BPMの最短送信間隔（秒）')
+    parser.add_argument('--small-tempo-max', type=positive, default=1.2, help='+1 BPMの最長送信間隔（秒）')
+    parser.add_argument('--lock-min', type=positive, default=35, help='ロックの最短送信間隔（秒）')
+    parser.add_argument('--lock-max', type=positive, default=55, help='ロックの最長送信間隔（秒）')
     parser.add_argument('--tempo-duration', type=positive, default=30, help='互換引数（Version 3では無視）')
     parser.add_argument('--run-seconds', type=positive, help='指定秒数で自動終了（通常は無制限）')
     args = parser.parse_args(argv)
-    if args.notes_min > args.notes_max or args.tempo_min > args.tempo_max:
+    if any(low > high for low, high in [(args.notes_min,args.notes_max),
+                                        (args.tempo_min,args.tempo_max),
+                                        (args.small_tempo_min,args.small_tempo_max),
+                                        (args.lock_min,args.lock_max)]):
         parser.error('最短間隔は最長間隔以下にしてください')
     if not 0.05 <= args.tempo_duration <= 3600:
         parser.error('持続時間は0.05～3600秒にしてください')
@@ -50,16 +57,21 @@ def main(argv=None):
     session = None
     playing = False
     last_message = None
-    next_notes = next_tempo = math.inf
+    next_notes = next_tempo = next_small = next_lock = math.inf
+    small_sender = None
+    small_remaining = 0
     delta = 10
     log('テスト送信開始。APIとSimply Loveのプレイ開始を待ちます。Ctrl+Cで終了。')
     log(f'矢印: {args.notes_min:g}～{args.notes_max:g}秒ごとに1～3個 / 速度: '
-        f'{args.tempo_min:g}～{args.tempo_max:g}秒ごとに+10/-10 BPMを交互に送信（累積、4小節ごとに減衰）')
+        f'+1 BPM: {args.small_tempo_min:g}～{args.small_tempo_max:g}秒ごと、同じ人から3～8回ずつ / '
+        f'±10 BPM: {args.tempo_min:g}～{args.tempo_max:g}秒ごとに交互 / '
+        f'ロック: {args.lock_min:g}～{args.lock_max:g}秒ごと（累積、4小節ごとに減衰）')
     try:
         while time.monotonic() < deadline:
             try:
                 status = request_json(base + '/api/status')
-                ready = bool(status.get('ready')) and args.player in status.get('players', [])
+                ready = (bool(status.get('ready')) and args.player in status.get('players', [])
+                         and status.get('protocol_version') == 3)
                 if not ready:
                     message = '待機中: ' + status.get('reason', '対象プレイヤーのプレイ開始待ち')
                     playing = False
@@ -69,28 +81,60 @@ def main(argv=None):
                         session = status.get('session')
                         next_notes = now + random.uniform(args.notes_min, args.notes_max)
                         next_tempo = now + random.uniform(args.tempo_min, args.tempo_max)
+                        next_small = now + random.uniform(args.small_tempo_min, args.small_tempo_max)
+                        next_lock = now + random.uniform(args.lock_min, args.lock_max)
+                        small_remaining = 0
+                        delta = 10
                     playing = True
                     message = 'プレイを検出。テストギフトを送ります。'
                     if message != last_message:
                         log(message)
                         last_message = message
-                    for kind, due in [('notes', next_notes), ('tempo', next_tempo)]:
+                    for action, due in [('notes', next_notes), ('small', next_small),
+                                        ('tempo', next_tempo), ('lock', next_lock)]:
                         if now < due:
                             continue
                         body = dict(event_id='test-' + str(uuid.uuid4()), player=args.player,
                                     sender=random.choice(['テスト視聴者A', 'テスト視聴者B', 'テスト視聴者C']))
-                        if kind == 'notes':
-                            body['count'] = random.randint(1, 3)
+                        kind = 'tempo' if action == 'small' else action
+                        if action == 'notes':
                             next_notes = now + random.uniform(args.notes_min, args.notes_max)
+                            remaining = int(status.get('note_remaining', 0))
+                            if remaining <= 0:
+                                continue
+                            body['count'] = random.randint(1, min(3, remaining))
                             description = f'{body["sender"]}: 矢印{body["count"]}個'
-                        else:
+                        elif action == 'small':
+                            if small_remaining <= 0:
+                                small_sender = body['sender']
+                                small_remaining = random.randint(3, 8)
+                            body.update(sender=small_sender, bpm_delta=1)
+                            small_remaining -= 1
+                            next_small = now + random.uniform(args.small_tempo_min, args.small_tempo_max)
+                            description = f'{body["sender"]}: +1 BPM'
+                        elif action == 'tempo':
                             body.update(bpm_delta=delta)
                             next_tempo = now + random.uniform(args.tempo_min, args.tempo_max)
-                            description = f'速度{delta:+d} BPM'
-                        result = request_json(base + '/api/' + kind, body)
-                        log(f'送信受付: {description} ({result.get("state", "unknown")})')
-                        if kind == 'tempo':
+                            description = f'{body["sender"]}: {delta:+d} BPM'
                             delta = -delta
+                        else:
+                            next_lock = now + random.uniform(args.lock_min, args.lock_max)
+                            if int(status.get('lock_remaining', 0)) <= 0:
+                                continue
+                            body['measures'] = status.get('lock_min_measures', 4)
+                            description = f'{body["sender"]}: BPMロック {body["measures"]}小節'
+                        try:
+                            result = request_json(base + '/api/' + kind, body)
+                        except HTTPError as error:
+                            try:
+                                reason = json.load(error).get('error', str(error))
+                            except (OSError, ValueError):
+                                reason = str(error)
+                            log(f'送信拒否: {description} — {reason}')
+                            # A sold-out/limited gift must not reset the other
+                            # schedules, otherwise frequent +1s starve locks.
+                            continue
+                        log(f'送信受付: {description} ({result.get("state", "unknown")})')
                 if message != last_message:
                     log(message)
                     last_message = message
@@ -103,7 +147,7 @@ def main(argv=None):
                 if message != last_message:
                     log(message)
                     last_message = message
-            time.sleep(min(0.5, max(0, deadline - time.monotonic())))
+            time.sleep(min(0.1, max(0, deadline - time.monotonic())))
     except KeyboardInterrupt:
         pass
     log('テスト送信終了。BPMオフセットは減衰し、次の曲で0になります。')
