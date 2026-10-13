@@ -45,6 +45,22 @@ eq(fresh(nil,100,80).autoUnavailable,true)
 eq(R.measure(20,{{0,4,4},{16,3,4}}),4+4/3);eq(R.beat(5,{{0,4,4},{16,3,4}}),19)
 local merged=fresh();merged:rescue(2,gift('rescue',2,'A'),0);merged:rescue(3,gift('rescue',3,'B'),.1);merged:rescue(2,gift('rescue',2,'A'),.2)
 eq(#merged.feed,2);eq(merged.feed[1].count,2);eq(merged.rescueBank,7)
+-- Reproduce the penultimate draw and a single remaining second-trial slot.
+local c2={} for k,v in pairs(config) do c2[k]=v end c2.trial_second_probability=1
+local function penultimate(a,b) if not a then return 0 end assert(a<b) return b-1 end
+local edge=R.new(c2,377.5,{{0,4,4}},function() return 90 end,nil,100,penultimate)
+eq(#edge.autoTargets,2);eq(edge.autoTargets[1],64);eq(edge.autoTargets[2],72)
+-- Use the real engine RNG, including one-slot and two-slot ranges.
+for _,last in ipairs({160,192,377.5,400}) do
+ for i=1,100 do
+  local r=R.new(c2,last,{{0,4,4}},function() return 90 end)
+  assert(#r.autoTargets>=1);checks=checks+1
+  for j,m in ipairs(r.autoTargets) do
+   assert(m>=24 and m<=last/4-16 and m%8==0);checks=checks+1
+   if j>1 then assert(m>r.autoTargets[j-1]);checks=checks+1 end
+  end
+ end
+end
 local function n(beat,col,length) return {beat,col,length and 'TapNoteType_HoldHead' or 'TapNoteType_Tap',length=length} end
 local plan=R.notePlan({n(0,1,4),n(2,2),n(4,1),n(6,1),n(6,2)},8,function() return true end)
 local occupied={};for _,note in ipairs({n(0,1,4),n(2,2),n(4,1),n(6,1),n(6,2)}) do

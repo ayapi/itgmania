@@ -763,7 +763,8 @@ local af=Def.ActorFrame{
   for _,actor in ipairs(noticeActors) do if actor:GetVisible() then actor:Draw() end end
  end,
  OnCommand=function(self)
-  initialize()
+  local ok,err=pcall(initialize)
+  if not ok then reason="GiftAPI initialization failed: "..tostring(err) Trace(reason) end
   lastPoll=0 lastStatus=0
   self:SetUpdateFunction(function()
    local now=GetTimeSinceStart()

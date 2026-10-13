@@ -37,9 +37,11 @@ function R.new(config,lastBeat,signatures,baseAt,carry,viewers,random)
  local eligible={} local total=R.measure(lastBeat,signatures)
  for m=math.ceil(config.trial_intro_measures/8)*8,math.floor((total-config.trial_tail_measures)/8)*8,8 do eligible[#eligible+1]=m end
  random=random or math.random
+ -- ITGmania replaces math.random and rejects equal two-argument bounds.
+ local function choose(lo,hi) if lo==hi then return lo end return random(lo,hi) end
  if #eligible>0 then
-  local first=random(1,#eligible) t.autoTargets[1]=eligible[first]
-  if first<#eligible and random()<config.trial_second_probability then t.autoTargets[2]=eligible[random(first+1,#eligible)] end
+  local first=choose(1,#eligible) t.autoTargets[1]=eligible[first]
+  if first<#eligible and random()<config.trial_second_probability then t.autoTargets[2]=eligible[choose(first+1,#eligible)] end
  end
  t.autoUnavailable=#eligible==0
  return t
