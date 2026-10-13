@@ -62,7 +62,7 @@ for(const [key,css] of [['bpmX','--bpm-x'],['bpmBottom','--bpm-bottom']]){
 function trialPulseOpacity(beat,bpm){
  const skip=Math.max(1,Math.ceil(bpm/180));
  const phase=((beat/skip)%1+1)%1;
- return 0.04+0.12*(1+Math.cos(phase*2*Math.PI))/2;
+ return 0.12+0.38*(1+Math.cos(phase*2*Math.PI))/2;
 }
 const wash=document.getElementById('trial-wash');
 let pulseClock=null;

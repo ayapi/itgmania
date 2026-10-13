@@ -88,7 +88,7 @@ Native BPM keeps its beat pulse and proportional font; the lock keeps its
 fixed-size Noto name, ellipsis, gold badge and seconds. The OBS browser washes the full 1080×1920 canvas in orange during trials.
 It follows the native song beat/effective BPM, compensates snapshot age and
 interpolates at browser frame rate between polls. At >180 BPM it skips beats to
-keep the soft pulse at <=3Hz. Opacity varies gently from 4–16%; text sits above
+keep the smooth pulse at <=3Hz. Opacity varies from 12–50%; text sits above
 the wash. Pausing, trial resolution, disconnection or stale updates clear it.
 Native edge illumination is removed, so game-source scale and phone cropping
 cannot move or remove the effect. No audio capture or FFT is required.
