@@ -1,6 +1,6 @@
-# Version 5-3 — trial and community rescue
+# Version 6-2 additions — trial warnings and clear cues
 
-This upgrade implements the 2026-10-13 specification. Native RGBA capture,
+This upgrade adds the 2026-10-14 warning/clear flow to Version 5-3. Native RGBA capture,
 mirrored arrows, mat input, sound/pitch synchronization, note inventory and
 fixed gift-name bubbles remain. No executable replacement is needed.
 
@@ -19,6 +19,25 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   and carry if too late. Hearts are disabled for their first four measures;
   paid rescue and locks still work. Names show contributors or the last sender
   plus the number of other people.
+- Every trial has a four-measure warning. Auto warnings begin four measures
+  before their selected eight-measure start boundary (earliest measure 20).
+  Fulfilled strong gifts warn on the next receiving beat, or after the intro,
+  current trial or lock. No reserved attack skips the warning.
+- The warning counts measures 4 → 3 → 2, then shows one large number per beat
+  in the final measure (4 → 3 → 2 → 1 for 4/4). The game plays a short original
+  notice chime and beat ticks; sounds play once, not in both browser sources.
+  Speed and orange light begin only when the trial actually starts.
+- Hearts during warnings are ignored. Paid rescue gifts retain the existing
+  bank behavior and apply to the next trial, preserving their paid value.
+- A lock during a warning reserves it again and restarts a full four-measure
+  warning after the lock. Locking an active trial or filling its gauge shows
+  `CHALLENGE CLEAR!` without a sender, for **two beats** (the user's shorter
+  override of the document's one–two measure suggestion), with a short chime.
+  The result counter updates immediately; the lock's own badge keeps its name.
+- The player's native cue uses the native music beat. The stream's browser cue
+  uses the same published beat and interpolates between polls; no timer in
+  wall-clock seconds drives the countdown or clear duration. Strong names have
+  fixed size and ellipsis. Warnings pending at exit retain paid reservations.
 - 20 taps/reactions = 1pt. TikTok uses cumulative deltas and resets its baseline
   on trial start, after the blocked period, decreased totals, stream-ID changes,
   `reset:true`, or jumps beyond `tiktok_max_delta` (100000/update by default).
@@ -101,6 +120,13 @@ updates return the light to black.
 Native edge illumination is removed, so game-source scale and phone cropping
 cannot move or remove the effect. No audio capture or FFT is required.
 Chroma key remains disabled for native transparent capture.
+
+Only warning/clear additions from Version 6-2 are applied here. The user's
+approved full-canvas Screen-blended orange light and metallic-gold lock badge
+remain; the document's older edge-only light/blue-shield alternatives are not
+used. Restart ITGmania once after updating theme files; the browser refreshes
+without restarting OBS. `trial_notice_measures` defaults to 4 and
+`trial_clear_beats` to 2 in `Save/GiftAPI/config.json`.
 
 ## State and tests
 

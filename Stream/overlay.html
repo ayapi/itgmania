@@ -31,6 +31,13 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
 .trial-center{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 60px);transform:translateX(-50%);width:660px;text-align:center;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,0 -2px 0 #000}
 #trial-info{font-size:48px;line-height:1.12;color:#ffbb57;font-weight:700;white-space:nowrap}#trial-panel.strong #trial-info{font-size:64px;color:#ff6e40;text-shadow:3px 3px 0 #230900,-3px -3px 0 #230900,3px -3px 0 #230900,-3px 3px 0 #230900}
 #trial-sender{font-size:36px;line-height:1.2;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+#trial-panel.announcing #trial-info{color:#ffe6a1;font-size:54px}
+.trial-center.announcing #trial-phase{font-size:34px;color:#ffe6a1;min-height:0}
+#trial-panel.counting #trial-info{font-size:124px;line-height:1;color:#fff2c2}
+.trial-center.counting #trial-phase{font-size:28px}
+.trial-center.clearing #trial-info{font-size:58px;color:#b7fff2;text-shadow:2px 2px 0 #07352e,-2px -2px 0 #07352e,2px -2px 0 #07352e,-2px 2px 0 #07352e,0 0 16px #53ffe699}
+.trial-center.clearing #trial-phase{display:none}
+#next-trial{font-size:18px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ffe6a1}
 #trial-phase{font-size:22px;line-height:1.2;min-height:27px;margin-top:3px;color:#ffe5a1}
 .trial-center .gauge{height:26px;margin:7px 0 4px;background:#191919b3;border-width:3px}.trial-center #remaining{font-size:32px;line-height:1.15}.trial-center.strong .gauge>div{background:#ff8647}
 #bank-status{font-size:18px}#effects li{font-size:20px;line-height:1.25;width:245px;max-width:245px}#effects .sender{max-width:185px}#effects .delta{font-family:inherit;font-size:20px;letter-spacing:0;-webkit-text-stroke:0;text-shadow:inherit}
@@ -40,9 +47,10 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
 <main id="panel" hidden>
  <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
  <section class="menu note-menu"><h2>NOTE ATTACK</h2><div class="receipt" id="receipt">100円相当 / 1ノート</div><div class="stock" id="note-stock"></div><div class="rules" id="rules"></div></section>
- <section class="menu tempo-menu"><h2>RESCUE / TRIAL / LOCK</h2>
+ <section class="menu tempo-menu"><h2>RESCUE / CHALLENGE / LOCK</h2>
   <div id="rank"></div><div class="price">ハート20回＝1pt / 1コイン・ジュエル＝1pt</div>
   <div id="trial-stock"></div><div id="lock-stock"></div>
+  <div id="next-trial"></div>
   <div id="bank-status"></div>
   <div id="gift-menu"></div><ul id="effects"></ul><div id="result"></div>
  </section>
@@ -97,8 +105,50 @@ function animatePulse(now){
  requestAnimationFrame(animatePulse);
 }
 requestAnimationFrame(animatePulse);
+// Derive the cue from the musical clock, including the last measure's beats.
+function challengePresentation(st,beat){
+ const r=st.resolution,a=st.announcement,t=st.trial;
+ if(r?.resolved && beat<r.end_beat){
+  const phase=Math.max(0,(beat-r.beat)/(r.end_beat-r.beat));
+  return {mode:'clearing',title:'CHALLENGE CLEAR!',phase:'',sender:'',strong:false,
+   scale:1+0.08*Math.exp(-phase*16),alpha:Math.min(1,(1-phase)*5)};
+ }
+ if(a){
+  const title=a.kind==='strong'?'CHALLENGE ATTACK':'CHALLENGE';
+  if(beat>=a.final_measure_beat){
+   return {mode:'counting',title:beat>=a.start_beat?'START!':String(Math.max(1,Math.ceil(a.start_beat-beat-1e-6))),
+    phase:title,sender:a.sender||'',strong:a.kind==='strong',
+    scale:1+0.08*Math.exp(-(beat-Math.floor(beat))*14),alpha:1};
+  }
+  const measures=a.measure_boundaries?.filter(b=>b>beat+1e-6).length||a.remaining_measures;
+  return {mode:'announcing',title,phase:'開始まで'+measures+'小節',sender:a.sender||'',strong:a.kind==='strong',scale:1,alpha:1};
+ }
+ if(t)return {mode:'active',title:t.kind==='strong'?'強い試練 ＋'+t.rise:'CHALLENGE ＋'+t.rise,
+  phase:!t.hearts_enabled?'ハート無効中 / 救済ギフト・ロックは有効':'',sender:t.kind==='strong'?t.sender:'',strong:t.kind==='strong',scale:1,alpha:1};
+ return null;
+}
+let cueClock=null;
+function syncChallenge(status,networkSeconds){
+ if(status.protocol_version!==5||!status.ready||status.connected===false){cueClock=null;return;}
+ const bpm=Number(status.effective_bpm),beat=Number(status.song_beat);
+ if(!Number.isFinite(bpm)||bpm<=0||!Number.isFinite(beat)){cueClock=null;return;}
+ const age=Math.min(.5,Math.max(0,Number(status.snapshot_age_seconds)||0)+networkSeconds);
+ cueClock={st:status.trial_state||{},beat:beat+age*bpm/60,bpm,at:performance.now()};
+}
+function drawChallenge(st,beat){
+ const cue=challengePresentation(st,beat),central=document.getElementById('trial-panel');
+ central.hidden=!cue;
+ for(const mode of ['announcing','counting','clearing'])central.classList.toggle(mode,cue?.mode===mode);
+ central.classList.toggle('strong',!!cue?.strong);
+ const title=document.getElementById('trial-info');title.textContent=cue?.title||'';
+ title.style.transform=`scale(${cue?.scale||1})`;title.style.opacity=String(cue?.alpha??1);
+ const sender=document.getElementById('trial-sender');sender.hidden=!cue?.sender;sender.textContent=cue?.sender||'';
+ document.getElementById('trial-phase').textContent=cue?.phase||'';
+ document.getElementById('rescue').hidden=cue?.mode!=='active';
+}
 function render(status,networkSeconds=0){
  syncPulse(status,networkSeconds);
+ syncChallenge(status,networkSeconds);
  const st=status.trial_state||{};
  panel.hidden=status.protocol_version!==5 || !(status.connected!==false && (status.ready || ((st.trial_results||[]).length && status.reason==='Gameplay ended')));
  if(panel.hidden){list.replaceChildren();rows.clear();return;}
@@ -110,13 +160,11 @@ function render(status,networkSeconds=0){
  const stock=document.getElementById('note-stock');stock.textContent=count?'残り '+count+'枠':'SOLD OUT';stock.classList.toggle('sold',!count);
  document.getElementById('rank').textContent='ランク '+(st.rank||1)+' / 同接 '+(st.viewers||0)+'人';
  const required=st.required_units||1;
- document.getElementById('trial-stock').textContent='TRIAL '+(st.trial_units||0)+'/'+required+'個'+(st.trial_reserved?' / 予約'+st.trial_reserved+'回':'');
+ document.getElementById('trial-stock').textContent='CHALLENGE '+(st.trial_units||0)+'/'+required+'個'+(st.trial_reserved?' / 予約'+st.trial_reserved+'回':'');
  const lock=document.getElementById('lock-stock');lock.textContent=st.lock_remaining?'LOCK '+(st.lock_units||0)+'/'+required+'個・残り'+st.lock_remaining+'回':'LOCK SOLD OUT'+(st.lock_units?' / 持越し'+st.lock_units+'個':'');
  const t=st.trial;
- const central=document.getElementById('trial-panel');central.hidden=!t;central.classList.toggle('strong',t&&t.kind==='strong');
- document.getElementById('trial-info').textContent=t?(t.kind==='strong'?'強い試練':'試練発生')+' ＋'+t.rise:'';
- const sender=document.getElementById('trial-sender');sender.hidden=!t||t.kind!=='strong';sender.textContent=t?t.sender:'';
- document.getElementById('trial-phase').textContent=t&&!t.hearts_enabled?'ハート無効中 / 救済ギフト・ロックは有効':'';
+ drawChallenge(st,status.song_beat);
+ document.getElementById('next-trial').textContent=status.bpm_lock&&st.next_trial_sender?'NEXT: '+st.next_trial_sender+'のCHALLENGE':'';
  document.getElementById('bank-status').textContent=st.rescue_bank?'救済持越し '+number(st.rescue_bank)+'pt':'';
  document.getElementById('progress').style.width=t?Math.min(100,100*t.points/t.required_points)+'%':'0%';
  document.getElementById('remaining').textContent=t?'残り '+number(t.remaining_points)+'pt'+(t.heart_pending?' / ハート反映待ち '+number(t.heart_pending)+'pt':''):'';
@@ -125,7 +173,7 @@ function render(status,networkSeconds=0){
  receipt.textContent=note?(note.count+'ノート受付：'+note.sender):'100円相当 / 1ノート';
  if(note && receiptId!==note.event_id){receiptId=note.event_id;receipt.animate([{transform:'translateY(12px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:160,easing:'ease-out'});}
  const results=st.trial_results||[];
- document.getElementById('result').textContent=!status.ready&&results.length?'試練 '+results.filter(r=>r.resolved).length+'/'+results.length+'回解除':st.resolution&&st.resolution.resolved?'試練解除！':'';
+ document.getElementById('result').textContent=results.length?'CHALLENGE '+results.filter(r=>r.resolved).length+'/'+results.length+' CLEAR':'';
  const effects=(st.rescue_feed||[]).slice(-3),alive=new Set();
  for(const effect of effects){
   const id=effect.event_id;alive.add(id);let row=rows.get(id);
@@ -136,13 +184,21 @@ function render(status,networkSeconds=0){
  const menu=document.getElementById('gift-menu'),choices=status.gift_menu||[],key=JSON.stringify(choices);
  if(menu.dataset.key!==key){menu.dataset.key=key;menu.replaceChildren();for(const gift of choices){const row=document.createElement('div');row.className='gift-choice';if(gift.image_url){const img=document.createElement('img');img.src=gift.image_url;row.append(img);}const label=document.createElement('span');label.textContent=gift.platform+' '+gift.name+' / '+gift.cost+' '+(gift.platform==='youtube'?'ジュエル':'コイン');row.append(label);menu.append(row);}}
 }
-
+function animateChallenge(now){
+ if(cueClock){
+  const elapsed=(now-cueClock.at)/1000;
+  if(elapsed>1.5){cueClock=null;document.getElementById('trial-panel').hidden=true;}
+  else drawChallenge(cueClock.st,cueClock.beat+elapsed*cueClock.bpm/60);
+ }
+ requestAnimationFrame(animateChallenge);
+}
+requestAnimationFrame(animateChallenge);
 async function poll(){
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),2000);
  const sentAt=performance.now();
  try{const response=await fetch('/api/status',{cache:'no-store',signal:controller.signal});
   if(!response.ok)throw new Error('status');const status=await response.json();render(status,(performance.now()-sentAt)/2000);
- }catch{clearPulse();panel.hidden=true;list.replaceChildren();rows.clear();}finally{clearTimeout(timeout);setTimeout(poll,250);}
+ }catch{clearPulse();cueClock=null;panel.hidden=true;list.replaceChildren();rows.clear();}finally{clearTimeout(timeout);setTimeout(poll,250);}
 }
 poll();
 </script>

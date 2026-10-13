@@ -13,7 +13,9 @@ def install(root):
     overlay = theme/'BGAnimations/ScreenGameplay overlay'
     if not (overlay/'default.lua').is_file():
         raise SystemExit('Simply Love is missing from '+str(root))
-    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'GiftRules.lua', 'StreamArrowFade.lua', 'StreamEdgeFade.lua', 'StreamMirror.lua'):
+    for name in ('GiftAPI.lua', 'GiftAPI.Json.lua', 'GiftRules.lua', 'ChallengeCue.lua',
+                 'ChallengeNotice.wav', 'ChallengeTick.wav', 'ChallengeClear.wav',
+                 'StreamArrowFade.lua', 'StreamEdgeFade.lua', 'StreamMirror.lua'):
         shutil.copy2(source/name, overlay/name)
     path = overlay/'default.lua'
     text = path.read_text(encoding='utf-8-sig')

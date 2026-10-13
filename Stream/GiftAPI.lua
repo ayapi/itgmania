@@ -8,7 +8,8 @@ local config = {max_active_arrows=24, max_queued_arrows=512, max_tempo_effects=1
                 tempo_decay_measures=4,lock_min_measures=4,tempo_notice_seconds=0.8,
                 trial_bpm_delta=10,trial_intro_measures=24,trial_tail_measures=16,
                 trial_second_probability=0.5,trial_fast_seconds=20,strong_heart_disabled_measures=4,
-                heart_taps_per_point=20,tiktok_max_delta=100000,lock_max_per_song=2,rescue_notice_seconds=1.2}
+                heart_taps_per_point=20,tiktok_max_delta=100000,lock_max_per_song=2,rescue_notice_seconds=1.2,
+                trial_notice_measures=4,trial_clear_beats=2}
 local packetCache={}
 local screen
 local performance={max_update_ms=0,max_insert_ms=0,slow_updates=0}
@@ -815,7 +816,8 @@ local af=Def.ActorFrame{
       end
       if lockActor then
        local lock=rules.lock
-       lockActor:xy(master.actor:GetX(),#tempoNotices>0 and (51-(#tempoNotices-1)*13-16) or 49):visible(lock~=nil and ready)
+       local clearing=rules.resolution and rules.resolution.resolved and beat<rules.resolution.end_beat
+       lockActor:xy(master.actor:GetX(),#tempoNotices>0 and (51-(#tempoNotices-1)*13-16) or 49):visible(lock~=nil and ready and not clearing)
        if lock then
         local remaining=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate)
         local secondsText=string.format("%.1fs",remaining)
@@ -956,6 +958,15 @@ for _,name in ipairs({"Base","Up","Down"}) do
  }
 end
 af[#af+1]=bpm
+-- Player-side cues use the same native beat as speed changes. The stream-side
+-- equivalent is rendered in the OBS information source, so do not mirror this.
+af[#af+1]=LoadActor('./ChallengeCue.lua',function()
+ local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
+ if not rules or not master or not screen or stopped then return nil end
+ local pos=GAMESTATE:GetSongPosition() local beat=pos:GetSongBeat()
+ local ready=beat>=0 and pos:GetMusicSeconds()<song:GetLastSecond() and not screen:IsPaused()
+ return rules:status(beat),beat,master.actor:GetX(),ready
+end)
 af[#af+1]=Def.ActorFrame{
  Name="StreamLock",
  InitCommand=function(self) lockActor=self self:visible(false) end,

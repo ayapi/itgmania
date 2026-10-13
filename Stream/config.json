@@ -19,5 +19,7 @@
   "heart_taps_per_point": 20,
   "tiktok_max_delta": 100000,
   "lock_max_per_song": 2,
-  "rescue_notice_seconds": 1.2
+  "rescue_notice_seconds": 1.2,
+  "trial_notice_measures": 4,
+  "trial_clear_beats": 2
 }
