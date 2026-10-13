@@ -23,7 +23,12 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
 .rules{margin-top:4px;font-size:13px;line-height:1.3;white-space:pre-line;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000}
 .receipt{font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gauge{height:16px;margin:7px 0;border:2px solid white;background:#2229;border-radius:3px;overflow:hidden}.gauge>div{height:100%;background:#ffc74b;width:0;transition:width 140ms linear}
-#trial-info.strong{font-size:26px;line-height:1.15}#trial-info{margin-top:8px;color:#ffbc64;overflow-wrap:anywhere}#effects li{font-size:20px;line-height:1.25;width:245px;max-width:245px}#effects .sender{max-width:185px}#effects .delta{font-family:inherit;font-size:20px;letter-spacing:0;-webkit-text-stroke:0;text-shadow:inherit}
+.trial-center{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 60px);transform:translateX(-50%);width:660px;text-align:center;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,0 -2px 0 #000}
+#trial-info{font-size:48px;line-height:1.12;color:#ffbb57;font-weight:700;white-space:nowrap}#trial-panel.strong #trial-info{font-size:64px;color:#ff6e40;text-shadow:3px 3px 0 #230900,-3px -3px 0 #230900,3px -3px 0 #230900,-3px 3px 0 #230900}
+#trial-sender{font-size:36px;line-height:1.2;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+#trial-phase{font-size:22px;line-height:1.2;min-height:27px;margin-top:3px;color:#ffe5a1}
+.trial-center .gauge{height:26px;margin:7px 0 4px;background:#191919b3;border-width:3px}.trial-center #remaining{font-size:32px;line-height:1.15}.trial-center.strong .gauge>div{background:#ff8647}
+#bank-status{font-size:18px}#effects li{font-size:20px;line-height:1.25;width:245px;max-width:245px}#effects .sender{max-width:185px}#effects .delta{font-family:inherit;font-size:20px;letter-spacing:0;-webkit-text-stroke:0;text-shadow:inherit}
 #result{margin-top:7px;color:#ffe69b}.gift-choice{display:flex;gap:4px;align-items:center;font-size:16px}.gift-choice img{width:24px;height:24px;object-fit:contain}
 </style>
 <main id="panel" hidden>
@@ -32,8 +37,12 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
  <section class="menu tempo-menu"><h2>RESCUE / TRIAL / LOCK</h2>
   <div id="rank"></div><div class="price">ハート20回＝1pt / 1コイン・ジュエル＝1pt</div>
   <div id="trial-stock"></div><div id="lock-stock"></div>
-  <div id="trial-info"></div><div id="rescue" hidden><div class="gauge"><div id="progress"></div></div><div id="remaining"></div></div>
+  <div id="bank-status"></div>
   <div id="gift-menu"></div><ul id="effects"></ul><div id="result"></div>
+ </section>
+ <section class="trial-center" id="trial-panel" hidden aria-live="polite">
+  <div id="trial-info"></div><div id="trial-sender"></div><div id="trial-phase"></div>
+  <div id="rescue"><div class="gauge"><div id="progress"></div></div><div id="remaining"></div></div>
  </section>
 </main>
 <script>
@@ -61,9 +70,11 @@ function render(status){
  document.getElementById('trial-stock').textContent='TRIAL '+(st.trial_units||0)+'/'+required+'個'+(st.trial_reserved?' / 予約'+st.trial_reserved+'回':'');
  const lock=document.getElementById('lock-stock');lock.textContent=st.lock_remaining?'LOCK '+(st.lock_units||0)+'/'+required+'個・残り'+st.lock_remaining+'回':'LOCK SOLD OUT'+(st.lock_units?' / 持越し'+st.lock_units+'個':'');
  const t=st.trial;
- document.getElementById("trial-info").classList.toggle("strong",t&&t.kind==="strong");
- document.getElementById('trial-info').textContent=t?(t.kind==='strong'?'強い試練：'+t.sender:'試練発生！')+(t.hearts_enabled?'':' / ハート待機中'):(st.rescue_bank?'救済ポイント持越し '+number(st.rescue_bank)+'pt':'');
- document.getElementById('rescue').hidden=!t;
+ const central=document.getElementById('trial-panel');central.hidden=!t;central.classList.toggle('strong',t&&t.kind==='strong');
+ document.getElementById('trial-info').textContent=t?(t.kind==='strong'?'強い試練':'試練発生')+' ＋'+t.rise:'';
+ const sender=document.getElementById('trial-sender');sender.hidden=!t||t.kind!=='strong';sender.textContent=t?t.sender:'';
+ document.getElementById('trial-phase').textContent=t&&!t.hearts_enabled?'ハート無効中 / 救済ギフト・ロックは有効':'';
+ document.getElementById('bank-status').textContent=st.rescue_bank?'救済持越し '+number(st.rescue_bank)+'pt':'';
  document.getElementById('progress').style.width=t?Math.min(100,100*t.points/t.required_points)+'%':'0%';
  document.getElementById('remaining').textContent=t?'残り '+number(t.remaining_points)+'pt'+(t.heart_pending?' / ハート反映待ち '+number(t.heart_pending)+'pt':''):'';
  document.getElementById('rules').textContent='試練で最大＋'+(status.bpm_offset_limit||0)+'BPM\nハートと救済ギフトで原曲へ';

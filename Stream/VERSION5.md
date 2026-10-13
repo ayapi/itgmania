@@ -80,7 +80,8 @@ coin/jewel costs. No payment or platform action is performed by this addon.
 Keep the existing browser source URL `/overlay`, 1080×1920 dimensions and game
 capture transforms. Song information and NOTE ATTACK stay left; rank,
 RESCUE/TRIAL/LOCK counts, gauge and brief rescue sender feed appear right.
-Strong-trial contributors are enlarged; anonymous hearts show no names.
+Strong-trial status, enlarged contributors and the rescue gauge occupy the
+center above native BPM; side menus only show gift/count information. anonymous hearts show no names.
 The final line reports resolved trials / total trials.
 
 Native BPM keeps its beat pulse and proportional font; the lock keeps its
@@ -109,3 +110,6 @@ the actual engine's Lua VM. Native integration checks real inserted notes,
 delayed strong trials, blocked hearts, paid rescue, chained locks and carry.
 Local metrics include per-platform input, rank, trial duration/resolution,
 points, contributions, note inventory, combo/judgments and processing time.
+
+Emergency edges use a clear red/orange gradient outside arrow silhouettes,
+with beat-synchronized 26–48% opacity; only the edges pulse, never the full screen.
