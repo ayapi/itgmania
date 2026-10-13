@@ -33,43 +33,56 @@ def numeric(body, key, lower, upper, *, integer=False):
 def validate(kind, body):
     if not isinstance(body, dict):
         raise APIError(400, 'JSON object required')
-    fields = {'notes': {'count'}, 'tempo': {'bpm_delta', 'duration_seconds'}, 'lock': {'measures'}}
+    fields = {'notes': {'count'}, 'rescue': {'points'}, 'trial': {'count'}, 'lock': {'count'},
+              'hearts': {'count','total','reactions','reset','stream_id','effect'}}
+    if kind == 'tempo':
+        raise APIError(410, 'Version 5 uses /api/trial and /api/rescue; tempo is retired')
     if kind not in fields:
         raise APIError(400, 'Unknown gift kind')
-    allowed = {'event_id', 'sender', 'player', 'platform', 'gift_id', 'amount_yen', 'coins', 'viewer_count'} | fields[kind]
-    if set(body) - allowed:
-        raise APIError(400, 'Unknown fields: ' + ', '.join(sorted(set(body) - allowed)))
-    sender = body.get('sender', '')
-    if not isinstance(sender, str) or len(sender) > 80 or any(ord(c) < 32 for c in sender):
-        raise APIError(400, 'sender must be a name of up to 80 characters without control characters')
-    if kind in ('notes', 'lock') and not sender:
-        raise APIError(400, 'sender is required for '+kind)
-    player = body.get('player', 'P1')
-    if player not in ('P1', 'P2'):
-        raise APIError(400, 'player must be P1 or P2')
-    event_id = body.get('event_id', str(uuid.uuid4()))
-    if not isinstance(event_id, str) or not 1 <= len(event_id) <= 128 or any(ord(c) < 32 for c in event_id):
-        raise APIError(400, 'event_id must be a string of 1-128 characters')
-    out = dict(kind=kind, event_id=event_id, sender=sender, player=player)
-    for key in ('platform', 'gift_id'):
+    allowed = {'event_id','sender','player','platform','gift_id','amount_yen','coins','viewer_count'} | fields[kind]
+    if set(body)-allowed:
+        raise APIError(400, 'Unknown fields: '+', '.join(sorted(set(body)-allowed)))
+    sender=body.get('sender','')
+    if not isinstance(sender,str) or len(sender)>80 or any(ord(c)<32 for c in sender):
+        raise APIError(400,'sender must be a name of up to 80 characters without control characters')
+    if kind!='hearts' and not sender:
+        raise APIError(400,'sender is required')
+    event_id=body.get('event_id',str(uuid.uuid4()))
+    if not isinstance(event_id,str) or not 1<=len(event_id)<=128 or any(ord(c)<32 for c in event_id):
+        raise APIError(400,'Invalid event_id')
+    player=body.get('player','P1')
+    if player not in ('P1','P2'): raise APIError(400,'player must be P1 or P2')
+    out=dict(kind=kind,event_id=event_id,sender=sender,player=player)
+    for key in ('platform','gift_id','stream_id'):
         if key in body:
-            value = body[key]
-            if not isinstance(value, str) or len(value)>128 or any(ord(c)<32 for c in value):
-                raise APIError(400, key+' must be a short string without control characters')
-            out[key] = value
-    for key in ('amount_yen', 'coins', 'viewer_count'):
-        if key in body:
-            out[key] = numeric(body,key,0,10000000,integer=key!='amount_yen')
-    if kind == 'notes':
-        out['count'] = numeric(body, 'count', 1, 256, integer=True)
-    elif kind == 'tempo':
-        out['bpm_delta'] = numeric(body, 'bpm_delta', -1000, 1000, integer=True)
-        if not out['bpm_delta']:
-            raise APIError(400, 'bpm_delta must not be zero')
-        if 'duration_seconds' in body:
-            numeric(body, 'duration_seconds', 0.05, 3600)  # Legacy field; no timer in v3.
+            v=body[key]
+            if not isinstance(v,str) or len(v)>128 or any(ord(c)<32 for c in v): raise APIError(400,'Invalid '+key)
+            out[key]=v
+    for key in ('amount_yen','coins','viewer_count'):
+        if key in body: out[key]=numeric(body,key,0,10000000,integer=key!='amount_yen')
+    if kind in ('notes','trial','lock'):
+        out['count']=numeric(dict(count=body.get('count',1)),'count',1,256,integer=True)
+    elif kind=='rescue': out['points']=numeric(body,'points',1,10000000,integer=True)
     else:
-        out['measures'] = numeric(dict(measures=body.get('measures', 4)), 'measures', 1, 1024, integer=True)
+        if 'effect' in body and not isinstance(body['effect'],bool): raise APIError(400,'effect must be boolean')
+        if body.get('platform') not in ('tiktok','youtube'): raise APIError(400,'hearts platform must be tiktok or youtube')
+        if body['platform']=='tiktok':
+            out['total']=numeric(body,'total',0,1000000000000,integer=True)
+            if 'reset' in body and not isinstance(body['reset'],bool): raise APIError(400,'reset must be boolean')
+            out['reset']=body.get('reset',False)
+            if 'count' in body or 'reactions' in body: raise APIError(400,'TikTok requires cumulative total')
+        else:
+            if 'total' in body or ('count' in body)==('reactions' in body): raise APIError(400,'YouTube requires count OR reactions')
+            if 'reactions' in body:
+                reactions=body['reactions']
+                if not isinstance(reactions,list) or len(reactions)>256: raise APIError(400,'Invalid reactions')
+                total=0
+                for r in reactions:
+                    if not isinstance(r,dict) or not isinstance(r.get('key'),str): raise APIError(400,'Invalid reaction')
+                    total+=numeric(r,'value',0,10000000,integer=True)
+                if total>10000000: raise APIError(400,'Too many reactions')
+                out['count']=total
+            else: out['count']=numeric(body,'count',0,10000000,integer=True)
     return out
 
 def atomic_json(path, data):
@@ -94,6 +107,8 @@ class Bridge:
         packaged_config = Path(__file__).with_name('config.json')
         if not config.exists() and packaged_config.exists():
             shutil.copyfile(packaged_config, config)
+        gift_map=self.directory/'gift-map.json'
+        if not gift_map.exists(): shutil.copy2(Path(__file__).with_name('gift-map.json'),gift_map)
         self.lock = threading.RLock()
         self.commands = []
         self.events = {}
@@ -106,9 +121,21 @@ class Bridge:
             self.config = json.loads(config.read_text(encoding='utf-8-sig'))
         except (OSError, ValueError):
             self.config = {}
+        saved=self.directory/'bridge-state.json'
+        if saved.exists():
+            state=json.loads(saved.read_text(encoding='utf-8-sig'))
+            self.server_id=state['server_id'];self.sequence=state['sequence']
+            self.commands=state['commands'];self.events=state['events']
         self.publish()
 
+    def save_state(self):
+        atomic_json(self.directory/'bridge-state.json',dict(server_id=self.server_id,sequence=self.sequence,commands=self.commands,events=self.events))
+
     def publish(self):
+        # Anonymous heart receipts are short-lived; paid receipt IDs stay durable.
+        free=[key for key,event in self.events.items() if event['request']['kind']=='hearts']
+        for key in free[:-128]: self.events.pop(key,None)
+        self.save_state()
         atomic_json(self.directory / 'commands.json', dict(server_id=self.server_id, commands=self.commands))
 
     def record(self, kind, payload):
@@ -129,6 +156,13 @@ class Bridge:
             if not status['connected'] and status.get('ready'):
                 status.update(ready=False, reason='ITGmania gameplay heartbeat is stale')
             with self.lock:
+                carry=status.get('carry_state')
+                if status.get('server_id')==self.server_id and isinstance(carry,dict):
+                    key=json.dumps(carry,sort_keys=True,ensure_ascii=False)
+                    if key!=getattr(self,'_carry_key',None):
+                        atomic_json(self.directory/'trial-state.json',carry)
+                        self._carry_key=key
+                receipts_changed=False
                 if status.get('server_id') == self.server_id:
                     for result in status.get('results', []):
                         event = self.events.get(result.get('event_id'))
@@ -136,30 +170,22 @@ class Bridge:
                             response = dict(result, session=event['response']['session'])
                             if response != event['response']:
                                 self.record('result', response)
+                                receipts_changed=True
                             event['response'] = response
-                    completed = set(status.get('completed_locks', []))
-                    ended = status.get('reason') in ('Gameplay ended', 'Song changed')
-                    for event in self.events.values():
-                        response = event['response']
-                        if response['session'] != status.get('session'):
-                            continue
-                        if response['state'] == 'held' and response.get('lock_event_id') in completed:
-                            response.update(state='applied', reason='Applied on lock release')
-                            self.record('result', response)
-                        elif ended and response['state'] in ('submitted','queued','active','held','reserved'):
-                            response.update(state='discarded', reason='Song ended before completion')
-                            self.record('result', response)
+                if receipts_changed:self.save_state()
                 key = (status.get('session'), int(status.get('music_seconds', 0)),
                        status.get('ready'), status.get('bpm_offset'),status.get('pending_bpm_delta'),
                        (status.get('bpm_lock') or {}).get('event_id'), status.get('failed'))
-                if key != self._metric_key and status.get('protocol_version') == 3:
+                if key != self._metric_key and status.get('protocol_version') == 5:
                     fields = ['session','song_title','music_seconds','song_beat','base_bpm','effective_bpm',
                               'bpm_offset','bpm_delta','pending_bpm_delta','bpm_overflow','bpm_lock',
                               'note_remaining','lock_remaining','life','failed','ready','metrics',
-                              'current_combo','max_combo','combo_breaks','judgments']
+                              'current_combo','max_combo','combo_breaks','judgments','trial_state']
                     self.record('status', {f: status.get(f) for f in fields})
                     self._metric_key = key
                 status['api_rejections'] = self.rejections
+            mapping=json.loads((self.directory/'gift-map.json').read_text(encoding='utf-8-sig'))
+            status['gift_menu']=[dict(platform=platform,name=rule.get('name',gid),cost=rule.get('cost',0),image_url=rule.get('image_url',''),kind=rule['kind']) for platform,gifts in mapping.items() for gid,rule in gifts.items()]
             self._complete_status = (time.monotonic(), dict(status))
             return status
         except (OSError, ValueError):
@@ -176,53 +202,62 @@ class Bridge:
                 if previous['request'] != command:
                     raise APIError(409, 'event_id already used with different parameters')
                 return dict(previous['response'], duplicate=True)
-            if len(self.events) >= 10000:
-                raise APIError(503, 'Event history is full; restart the bridge between streams')
+            if len(self.events) >= 100000:
+                raise APIError(503, 'Paid receipt history is full; archive bridge-state.json between streams')
             status = self.status()
-            if not status.get('ready'):
-                raise APIError(409, status.get('reason', 'Not playing a song'))
-            if command['player'] not in status.get('players', []):
-                raise APIError(409, 'Requested player is not playing')
-            session = status['session']
-            if session != self.session:
-                self.session = session
-                self.commands = []
-            seen = status.get('server_id') == self.server_id
-            cursor = status.get('cursor', 0) if seen else 0
-            pending = [c for c in self.commands if c['sequence'] > cursor]
-            if status.get('protocol_version') != 3:
-                raise APIError(409, 'Start the next song to load GiftAPI version 3')
-            if kind == 'notes':
-                reserved = sum(c['count'] for c in pending if c['kind'] == 'notes')
-                if command['count'] > max(0, status.get('note_remaining', 0)-reserved):
-                    raise APIError(409, 'NOTE ATTACK SOLD OUT or insufficient remaining slots')
-            elif kind == 'lock':
-                unit = status.get('lock_min_measures', self.config.get('lock_min_measures', 4))
-                reserved = sum(c['measures']//unit for c in pending if c['kind'] == 'lock')
-                if command['measures'] % unit or command['measures']//unit > max(0,status.get('lock_remaining', 0)-reserved):
-                    raise APIError(409, 'BPM LOCK SOLD OUT or invalid block size')
-            else:
-                reserved = sum(c['bpm_delta'] for c in pending if c['kind'] == 'tempo')
-                value = status.get('bpm_offset', 0)+status.get('pending_bpm_delta', 0)+reserved+command['bpm_delta']
-                existing = value-command['bpm_delta']
-                if abs(value) > status.get('bpm_stored_limit', 0) and abs(value) > abs(existing):
-                    raise APIError(409, 'Stored BPM offset limit reached')
+            if status.get('connected') and status.get('protocol_version') not in (None,5):
+                raise APIError(409,'Restart ITGmania to load GiftAPI version 5')
+            active=bool(status.get('ready')) and status.get('protocol_version')==5
+            if kind in ('notes','hearts') and not active:
+                raise APIError(409,'Start a song with GiftAPI version 5')
+            if kind=='notes' and command['player'] not in status.get('players',[]):
+                raise APIError(409,'Requested player is not playing')
+            session=status.get('session','') if kind in ('notes','hearts') else '*'
+            seen=status.get('server_id')==self.server_id
+            cursor=status.get('cursor',0) if seen else 0
+            pending=[c for c in self.commands if c['sequence']>cursor]
+            if kind=='notes':
+                reserved=sum(c['count'] for c in pending if c['kind']=='notes')
+                if command['count']>max(0,status.get('note_remaining',0)-reserved):
+                    raise APIError(409,'NOTE ATTACK SOLD OUT or insufficient remaining slots')
             if len(pending) >= 128:
                 raise APIError(429, 'Gameplay command queue is full')
             self.sequence += 1
             transport = dict(command, session=session, sequence=self.sequence)
             candidate = pending + [transport]
-            old = self.commands
             self.commands = candidate
+            response=dict(event_id=command['event_id'],state='submitted',session=session)
+            self.events[command['event_id']]=dict(request=command,response=response)
             try:
                 self.publish()
             except OSError:
-                self.commands = old
                 raise APIError(503, 'Could not publish command to ITGmania')
-            response = dict(event_id=command['event_id'], state='submitted', session=session)
-            self.events[command['event_id']] = dict(request=command, response=response)
             self.record('accepted', dict(gift=command, session=session))
             return response
+
+    def input(self,kind,body):
+        if kind=='audience':
+            if not isinstance(body,dict) or set(body)-{'tiktok','youtube'}: raise APIError(400,'Audience needs tiktok/youtube counts')
+            value={p:numeric(body,p,0,10000000,integer=True) for p in ('tiktok','youtube')}
+            atomic_json(self.directory/'audience.json',value)
+            self.record('audience',value)
+            return dict(state='updated',**value)
+        if kind=='gift':
+            if not isinstance(body,dict): raise APIError(400,'JSON object required')
+            mapping=json.loads((self.directory/'gift-map.json').read_text(encoding='utf-8-sig'))
+            rule=mapping.get(body.get('platform'),{}).get(body.get('gift_id'))
+            if not rule: raise APIError(409,'Gift is not assigned in gift-map.json')
+            count=numeric(dict(count=body.get('count',1)),'count',1,256,integer=True)
+            command=dict(body);command.pop('count',None)
+            if not isinstance(rule,dict) or rule.get('kind') not in ('notes','rescue','trial','lock'): raise APIError(400,'Invalid gift mapping')
+            action=rule['kind']
+            command['points' if action=='rescue' else 'count']=count*rule.get('points_per_unit' if action=='rescue' else 'units_per_gift',1)
+            return self.submit(action,command)
+        if kind=='hearts' and not self.status().get('ready'):
+            command=validate(kind,body)
+            if command['platform']=='tiktok': atomic_json(self.directory/'tiktok-baseline.json',command)
+            return dict(state='ignored',reason='No active trial/gameplay')
+        return self.submit(kind,body)
 
     def event(self, event_id):
         with self.lock:
@@ -234,7 +269,7 @@ class Bridge:
                 if result.get('event_id') == event_id and status.get('server_id') == self.server_id:
                     event['response'] = dict(result, session=event['response']['session'])
             result = dict(event['response'])
-            if result['state'] == 'submitted' and status.get('session') != result['session']:
+            if event['request']['kind']=='notes' and result['state'] == 'submitted' and status.get('session') != result['session']:
                 result.update(state='discarded', reason='Song ended or gameplay disconnected before acknowledgement')
             return result
 
@@ -263,7 +298,7 @@ def make_handler(bridge):
                 elif path == '/api/status':
                     self.reply(200, bridge.status())
                 elif path == '/api/info':
-                    self.reply(200, dict(api_version=3, server_id=bridge.server_id,
+                    self.reply(200, dict(api_version=5, server_id=bridge.server_id,
                                          runtime=str(bridge.directory.parent.parent.resolve())))
                 elif path.startswith('/api/events/'):
                     self.reply(200, bridge.event(unquote(path[len('/api/events/'):])) )
@@ -277,7 +312,7 @@ def make_handler(bridge):
         def do_POST(self):
             try:
                 path = urlsplit(self.path).path
-                if path not in ('/api/notes', '/api/tempo', '/api/lock'):
+                if path not in ('/api/notes','/api/tempo','/api/lock','/api/trial','/api/rescue','/api/hearts','/api/audience','/api/gift'):
                     raise APIError(404, 'Unknown endpoint')
                 if self.headers.get('Transfer-Encoding'):
                     raise APIError(400, 'Use Content-Length, not Transfer-Encoding')
@@ -292,7 +327,7 @@ def make_handler(bridge):
                     body = json.loads(self.rfile.read(length).decode('utf-8'))
                 except (ValueError, UnicodeError):
                     raise APIError(400, 'Invalid UTF-8 JSON')
-                self.reply(202, bridge.submit(path.rsplit('/', 1)[-1], body))
+                self.reply(202, bridge.input(path.rsplit('/',1)[-1],body))
             except APIError as e:
                 bridge.rejections += 1
                 bridge.record('rejected', dict(http_status=e.status, reason=e.message))
@@ -322,6 +357,12 @@ def main():
         except OSError:
             raise SystemExit('Another GiftAPI bridge is already using this game folder')
         bridge = Bridge(args.outfox)
+        def collect():
+            while True:
+                try: bridge.status()
+                except (OSError,ValueError): pass
+                time.sleep(.1)
+        threading.Thread(target=collect,daemon=True,name='gameplay-checkpoint').start()
         server = ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(bridge))
         print(f'ITGmania GiftAPI: http://127.0.0.1:{args.port}/api/status', flush=True)
         try:

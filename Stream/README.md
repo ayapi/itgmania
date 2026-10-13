@@ -1,5 +1,10 @@
 # Simply Love streaming fork
 
+**Current rules are Version 5-3. Read [VERSION5.md](VERSION5.md) for the current
+API, trial/rescue system, gift assignments, persistence and test controls.**
+The Version 3 tempo/decay/life description below is historical; `/api/tempo`
+has been retired. Existing capture, input, font and note-layout setup remains.
+
 This fork adds native RGBA output on Windows and real, judged gift taps to
 ITGmania. The upstream ITGmania and Simply Love licenses apply; this addon is
 also GPL-3.0-or-later.

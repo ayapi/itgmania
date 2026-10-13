@@ -1,4 +1,4 @@
-"""Start the local API before game/OBS startup; reuse the existing v3 server."""
+"""Start the local API before game/OBS startup; reuse the existing v5 server."""
 from pathlib import Path
 from urllib.request import urlopen
 import json, subprocess, sys, time, os
@@ -9,7 +9,7 @@ def running():
     try:
         with urlopen('http://127.0.0.1:8765/api/info', timeout=.25) as response:
             info = json.load(response)
-            return info.get('api_version') == 3 and os.path.normcase(info.get('runtime','')) == os.path.normcase(str(directory.parent.resolve()))
+            return info.get('api_version') == 5 and os.path.normcase(info.get('runtime','')) == os.path.normcase(str(directory.parent.resolve()))
     except (OSError, ValueError):
         return False
 

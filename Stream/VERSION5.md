@@ -1,0 +1,111 @@
+# Version 5-3 — trial and community rescue
+
+This upgrade implements the 2026-10-13 specification. Native RGBA capture,
+mirrored arrows, mat input, sound/pitch synchronization, note inventory and
+fixed gift-name bubbles remain. No executable replacement is needed.
+
+## Rules
+
+- Rank is fixed at song start from TikTok + YouTube viewers: <50 / <150 / <350 /
+  350+, requiring 1 / 1 / 2 / 4 trial or lock gift units. Normal rescue requires
+  40 / 160 / 320 / 640pt; strong rescue requires 1.5 times that.
+- The integer BPM offset is nonnegative, resets each song and never decays
+  automatically. Safety cap is floor(original BPM × 15%).
+- Auto +10 trials choose eight-measure boundaries after the first 24 measures
+  and before the last 16. A first trial is planned whenever eligible boundaries
+  exist; the second has a 50% chance when a later boundary exists. Active trials
+  and locks defer auto trials; one boundary is rested after rescue.
+- Strong trials raise BPM to the cap, reserve while busy or inside the intro,
+  and carry if too late. Hearts are disabled for their first four measures;
+  paid rescue and locks still work. Names show contributors or the last sender
+  plus the number of other people.
+- 20 taps/reactions = 1pt. TikTok uses cumulative deltas and resets its baseline
+  on trial start, after the blocked period, decreased totals, stream-ID changes,
+  `reset:true`, or jumps beyond `tiktok_max_delta` (100000/update by default).
+  YouTube adds every reaction type's per-event value.
+- Heart credit is buffered and applied at at most one BPM per measure. Gift
+  points bypass the speed limit, apply next beat and never lower BPM below the
+  original. Outside-trial and surplus gift points are banked.
+- Rescue under 20 seconds raises the next requirement by 20%; an unresolved
+  trial lowers it by 20%. Calibration stays between 0.5–2 times rank base.
+- Locks restore original BPM, resolve the trial and last four measures. At most
+  two activate per song; queued locks chain. Partial, late and sold-out lock
+  contributions carry. Trial contributions and reservations also carry.
+- Notes retain the existing eighth-note plan, hold occupancy, two-foot limit,
+  no consecutive added jumps and visible-field lead. Sold-out notes are rejected.
+- Fail is Off and life/letter-grade displays are hidden in streamer mode.
+  Combo remains; the browser shows a single rescue gauge and trial results.
+
+Short songs without an eligible auto-trial interval report
+`auto_trial_unavailable`. Auto trials cannot interrupt active paid effects.
+
+## Local API
+
+Send JSON to localhost:8765. Use a stable unique `event_id` for paid events;
+duplicates return the prior receipt, and changed parameters return 409.
+Inspect `/api/events/<event_id>` for contribution, reservation and carry outcomes.
+
+| Endpoint | Body example |
+| --- | --- |
+| `/api/audience` | `{"tiktok":100,"youtube":50}` |
+| `/api/hearts` | `{"platform":"tiktok","total":12345,"stream_id":"live-1"}` |
+| `/api/hearts` | `{"platform":"youtube","reactions":[{"key":"🧡","value":3},{"key":"😄","value":1}]}` |
+| `/api/rescue` | `{"event_id":"r1","sender":"視聴者A","points":2}` |
+| `/api/trial` | `{"event_id":"t1","sender":"視聴者A","count":1}` |
+| `/api/lock` | `{"event_id":"l1","sender":"視聴者A","count":1}` |
+| `/api/notes` | `{"event_id":"n1","sender":"視聴者A","count":1}` |
+| `/api/gift` | `{"event_id":"g1","sender":"視聴者A","platform":"youtube","gift_id":"actual-id","count":2}` |
+
+TikTok accepts `reset:true`. YouTube alternatively accepts `count:4`.
+Trial/lock/rescue events can wait between songs; notes require active gameplay.
+Idle hearts are ignored, while idle TikTok totals set the next baseline.
+`/api/tempo` returns 410; `/api/lock` now takes gift count rather than measures.
+
+## Assignments and OBS
+
+Actual gift IDs and images are undecided. `Save/GiftAPI/gift-map.json` starts
+empty; unknown assignments are rejected. OneComme WebSocket ingestion is not
+connected yet, as agreed. Its caller sends audience, gift and reaction data to
+the APIs. Replace the map without rebuilding, for example:
+
+```json
+{"youtube":{"ACTUAL_ID":{"kind":"rescue","points_per_unit":2,
+"name":"星","cost":2,"image_url":"https://example.com/gift.png"}},"tiktok":{}}
+```
+
+Trial/lock/note mappings use `kind` and `units_per_gift` (default 1). Select gift
+events rather than Super Chats. The map also supplies menu names, images and
+coin/jewel costs. No payment or platform action is performed by this addon.
+
+Keep the existing browser source URL `/overlay`, 1080×1920 dimensions and game
+capture transforms. Song information and NOTE ATTACK stay left; rank,
+RESCUE/TRIAL/LOCK counts, gauge and brief rescue sender feed appear right.
+Strong-trial contributors are enlarged; anonymous hearts show no names.
+The final line reports resolved trials / total trials.
+
+Native BPM keeps its beat pulse and proportional font; the lock keeps its
+fixed-size Noto name, ellipsis, gold badge and seconds. Red/orange edge glows
+are behind notes, skip beats above 180 BPM and never pulse above 3Hz.
+Chroma key remains disabled for native transparent capture.
+
+## State and tests
+
+`bridge-state.json` persists paid receipt IDs and pending commands.
+`trial-state.json` persists partial contributions, reserved strong trials,
+banked points and calibration. The API collector checkpoints through the
+existing asynchronous mailbox, away from the game render thread. Anonymous
+heart receipts retain the last 128 entries. Back up state before resetting it.
+
+Start through the existing `start-game.cmd`. Restart the API and game after
+upgrading. `Save/GiftAPI/config.json` contains editable test values.
+`start-test.cmd` now sends notes every 3–6 seconds, rescue gifts every 3–10,
+hearts every second, strong gifts every 35–55 and locks every 55–85. It posts
+100 TikTok viewers before the next song; override with `--tiktok-viewers` and
+`--youtube-viewers`. It no longer sends old ±BPM effects.
+
+Run `python -m unittest discover -s Stream -p 'test_*.py'` for API/OBS tests.
+`GiftRulesTest.lua` checks scheduling, rescue, persistence and note safety in
+the actual engine's Lua VM. Native integration checks real inserted notes,
+delayed strong trials, blocked hearts, paid rescue, chained locks and carry.
+Local metrics include per-platform input, rank, trial duration/resolution,
+points, contributions, note inventory, combo/judgments and processing time.

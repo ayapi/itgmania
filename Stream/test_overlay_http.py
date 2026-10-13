@@ -14,8 +14,8 @@ class OverlayTests(unittest.TestCase):
             api = bridge.Bridge(Path(folder))
             payload = dict(ready=True, server_id=api.server_id, song_title='曲名',
                            song_artist='アーティスト', effective_bpm=150,
-                           active_tempo_effects=[dict(sender='<b>視聴者</b>', bpm_delta=10,
-                                                     remaining_seconds=8)])
+                           trial_state=dict(rescue_feed=[dict(sender='<b>視聴者</b>', bpm_delta=10,
+                                                     points=8)]))
             (api.directory/'status.json').write_text(json.dumps(payload), encoding='utf-8')
             server = bridge.ThreadingHTTPServer(('127.0.0.1', 0), bridge.make_handler(api))
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -26,12 +26,12 @@ class OverlayTests(unittest.TestCase):
                     self.assertEqual(response.headers.get_content_type(), 'text/html')
                     html = response.read().decode('utf-8')
                     self.assertIn("fetch('/api/status'", html)
-                    self.assertIn('name.textContent=effect.sender', html)
+                    self.assertIn('row.children[0].textContent=effect.sender', html)
                 with urlopen(origin+'/api/status') as response:
                     status = json.load(response)
                 self.assertTrue(status['connected'])
                 self.assertEqual(status['song_artist'], 'アーティスト')
-                self.assertEqual(status['active_tempo_effects'], payload['active_tempo_effects'])
+                self.assertEqual(status['trial_state'], payload['trial_state'])
             finally:
                 server.shutdown()
                 server.server_close()

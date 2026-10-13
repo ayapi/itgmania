@@ -1,4 +1,4 @@
--- Version 3 gameplay rules. Pure Lua: no file I/O or game globals.
+-- Version 5 trial / community rescue rules; pure Lua.
 local R={}
 local function clamp(v,a,b) return math.max(a,math.min(b,v)) end
 function R.measure(beat,signatures)
@@ -19,120 +19,225 @@ function R.beat(measure,signatures)
  end
  return last+(measure-result)*size
 end
-function R.new(config,lastBeat,signatures,baseAt)
- local t={config=config,lastBeat=lastBeat,signatures=signatures,baseAt=baseAt,
-  offset=0,pendingDelta=0,held={},actions={},locks={},lock=nil,
-  lastBeatUpdated=0,decayElapsed=0,feed={},appliedThisStep={},serial=0,lockReserved=0,events={},changes={},completedLocks={},
-  metrics={tempo_gifts=0,lock_gifts=0,cap_seconds=0,max_overflow=0}}
- return setmetatable(t,{__index=R})
+function R.rank(viewers)
+ return viewers<50 and 1 or viewers<150 and 2 or viewers<350 and 3 or 4
+end
+function R.new(config,lastBeat,signatures,baseAt,carry,viewers,random)
+ carry=carry or {} local rank=R.rank(viewers or 0)
+ local t={config=config,lastBeat=lastBeat,signatures=signatures,baseAt=baseAt,rank=rank,
+  viewers=viewers or 0,requiredUnits=({1,1,2,4})[rank],offset=0,pendingDelta=0,
+  actions=carry.actions or {},locks={},lock=nil,trial=nil,feed={},appliedThisStep={},changes={},events=carry.events or {},
+  completedLocks={},metrics={cap_seconds=0,trials=0,resolved=0,heart_taps_tiktok=0,heart_taps_youtube=0,
+   rescue_gifts=0,gift_points=0,trial_gifts=0,lock_gifts=0},results={},lastBeatUpdated=-1,
+  trialUnits=carry.trialUnits or {},lockUnits=carry.lockUnits or {},strongQueue=carry.strongQueue or {},
+  rescueBank=carry.rescueBank or 0,bankEvents=carry.bankEvents or {},multiplier=carry.multiplier or 1,
+  tiktokTotal=nil,tiktokStream=nil,locksUsed=0,restUntil=0,autoDone=0,autoTargets={}}
+ setmetatable(t,{__index=R})
+ for _,c in ipairs(t.actions) do c.applyBeat=0 end
+ local eligible={} local total=R.measure(lastBeat,signatures)
+ for m=math.ceil(config.trial_intro_measures/8)*8,math.floor((total-config.trial_tail_measures)/8)*8,8 do eligible[#eligible+1]=m end
+ random=random or math.random
+ if #eligible>0 then
+  local first=random(1,#eligible) t.autoTargets[1]=eligible[first]
+  if first<#eligible and random()<config.trial_second_probability then t.autoTargets[2]=eligible[random(first+1,#eligible)] end
+ end
+ t.autoUnavailable=#eligible==0
+ return t
 end
 function R:event(id,state,reason,lockId)
+ if not id then return end
  local value={state=state,reason=reason or '',lock_event_id=lockId}
  self.events[id]=value self.changes[id]=value
 end
 function R:limit(base) return math.floor(base*self.config.tempo_limit_percent+0.000001) end
-function R:storedLimit(base) return math.floor(base*self.config.tempo_stored_limit_percent+0.000001) end
-function R:applied(base) return clamp(self.offset,-self:limit(base),self:limit(base)) end
-function R:bpm(base) return self.lock and self.lock.bpm or base+self:applied(base) end
+function R:storedLimit(base) return self:limit(base) end
+function R:applied(base) return clamp(self.offset,0,self:limit(base)) end
+function R:bpm(base) return base+self:applied(base) end
 function R:remainingLocks(beat)
- local start=math.floor(beat+0.000001)+1
- local measures=R.measure(self.lastBeat,self.signatures)-R.measure(start,self.signatures)-self.lockReserved
- return math.max(0,math.floor((measures+0.000001)/self.config.lock_min_measures))
+ local m=R.measure(beat,self.signatures)
+ local available=R.measure(self.lastBeat,self.signatures)-m
+ if self.lock then available=available-math.max(0,self.lock.endMeasure-m) end
+ return math.max(0,math.min(self.config.lock_max_per_song-self.locksUsed,math.floor((available+0.000001)/self.config.lock_min_measures)))
+end
+local function displayName(tokens)
+ local names,seen={},{}
+ for _,c in ipairs(tokens) do if not seen[c.sender] then names[#names+1]=c.sender seen[c.sender]=true end end
+ if #names<=2 then return table.concat(names,'・') end
+ return names[#names]..'＋ほか'..(#names-1)..'人'
+end
+function R:group(units)
+ local tokens={}
+ for i=1,self.requiredUnits do tokens[i]=table.remove(units,1) end
+ return {tokens=tokens,sender=displayName(tokens),event_id=tokens[#tokens].event_id,measures=self.config.lock_min_measures}
+end
+function R:tokenEvents(group,state,reason)
+ for _,c in ipairs(group.tokens or {}) do self:event(c.event_id,state,reason) end
 end
 function R:submit(command,beat)
- local base=self.baseAt(beat)
- if command.kind=='tempo' then
-  local delta=command.bpm_delta
-  local existing=self.offset+self.pendingDelta
-  if math.abs(existing+delta)>self:storedLimit(base) and math.abs(existing+delta)>math.abs(existing) then
-   return false,'Stored BPM offset limit reached'
-  end
-  self.pendingDelta=self.pendingDelta+delta
-  self.metrics.tempo_gifts=self.metrics.tempo_gifts+1
- elseif command.kind=='lock' then
-  local blocks=command.measures/self.config.lock_min_measures
-  if blocks~=math.floor(blocks) or blocks>self:remainingLocks(beat) then return false,'BPM LOCK SOLD OUT' end
-  self.lockReserved=self.lockReserved+command.measures
-  self.metrics.lock_gifts=self.metrics.lock_gifts+1
- else return false,'Unknown tempo command' end
+ if command.kind=='tempo' then return false,'Version 5 uses trial/rescue instead of tempo' end
+ if command.kind~='trial' and command.kind~='rescue' and command.kind~='lock' and command.kind~='hearts' then return false,'Unknown command' end
  command.applyBeat=math.floor(beat+0.000001)+1
  self.actions[#self.actions+1]=command
- self:event(command.event_id,'queued','Applies on next beat')
+ self:event(command.event_id,'queued','Applies on next beat') return true
+end
+function R:finishTrial(now,resolved,why)
+ local t=self.trial if not t then return end
+ local duration=math.max(0,now-t.startedAt)
+ self.results[#self.results+1]={kind=t.kind,required=t.required,heart_points=t.heartPoints,
+  gift_points=t.giftPoints,duration_seconds=duration,resolved=resolved,reason=why,sender=t.sender}
+ self.metrics.resolved=self.metrics.resolved+(resolved and 1 or 0)
+ if not resolved then self.multiplier=clamp(self.multiplier*0.8,0.5,2)
+ elseif duration<self.config.trial_fast_seconds then self.multiplier=clamp(self.multiplier*1.2,0.5,2) end
+ if t.group then self:tokenEvents(t.group,'completed',resolved and 'Trial rescued' or 'Trial reached song end') end
+ self.resolution={resolved=resolved,at=now,sender=t.sender,reason=why}
+ self.trial=nil self.offset=0
+ self.restUntil=(math.floor(R.measure(self.lastBeatUpdated,self.signatures)/8)+2)*8
+end
+function R:rescue(points,command,now)
+ if command then
+  local last
+  for i=#self.feed,1,-1 do
+   local row=self.feed[i]
+   if row.sender==command.sender and row.unit_points==points and now-row.last_at<1.5 then last=row break end
+  end
+  if last then
+   last.points=last.points+points last.count=last.count+1 last.last_at=now
+  else self.feed[#self.feed+1]={event_id=command.event_id,sender=command.sender,points=points,unit_points=points,count=1,last_at=now} end
+  while #self.feed>8 do table.remove(self.feed,1) end
+ end
+ if not self.trial then
+  self.rescueBank=self.rescueBank+points
+  if command then self.bankEvents[#self.bankEvents+1]=command self:event(command.event_id,'carried','Rescue points saved for next trial') end
+  return
+ end
+ local t=self.trial local used=math.min(points,math.max(0,t.required-t.progress))
+ t.giftPoints=t.giftPoints+used t.progress=t.progress+used
+ if points>used then self.rescueBank=self.rescueBank+points-used end
+ self.offset=math.max(0,t.rise-math.floor(t.progress*t.rise/t.required+0.000001))
+ if command then
+  self:event(command.event_id,'applied','Gift rescue points applied')
+
+ end
+ if self.offset==0 then self:finishTrial(now,true,'rescue') end
+end
+function R:startTrial(kind,group,beat,now)
+ self.resolution=nil
+ local rise=kind=='strong' and self:limit(self.baseAt(beat)) or math.min(self.config.trial_bpm_delta,self:limit(self.baseAt(beat)))
+ if rise<1 then return false end
+ local base=({40,160,320,640})[self.rank]*(kind=='strong' and 1.5 or 1)
+ self.trial={kind=kind,sender=group and group.sender or '自動試練',group=group,rise=rise,
+  required=math.max(1,math.floor(base*self.multiplier+0.5)),progress=0,heartPoints=0,giftPoints=0,
+  heartPending=0,tapRemainder=0,heartMeasure=-1,heartSpent=0,startedAt=now,startMeasure=R.measure(beat,self.signatures),
+  heartBaselineReady=kind~="strong",heartsAfter=R.measure(beat,self.signatures)+(kind=='strong' and self.config.strong_heart_disabled_measures or 0)}
+ self.offset=rise self.metrics.trials=self.metrics.trials+1
+ if group then self:tokenEvents(group,'active','Strong trial started') end
+ -- The last observed TikTok cumulative total is the new baseline.
+ if self.rescueBank>0 then
+  local bank=self.rescueBank self.rescueBank=0
+  for _,c in ipairs(self.bankEvents) do self:event(c.event_id,'applied','Banked points applied to trial') end
+  self.bankEvents={} self:rescue(bank,nil,now)
+ end
  return true
 end
-function R:announce(command,now)
- local last=self.feed[#self.feed]
- if last and last.sender==command.sender and last.bpm_delta==command.bpm_delta and now-last.last_at<=1.5 then
-  last.count=last.count+1 last.last_at=now
+function R:hearts(c,beat)
+ local count=0
+ if c.platform=='tiktok' then
+  if self.tiktokTotal and not c.reset and (not c.stream_id or c.stream_id==self.tiktokStream) then
+   local delta=c.total-self.tiktokTotal
+   if delta>=0 and delta<=self.config.tiktok_max_delta then count=delta end
+  end
+  self.tiktokTotal=c.total self.tiktokStream=c.stream_id or self.tiktokStream
+ else count=c.count end
+ self.metrics['received_hearts_'..c.platform]=(self.metrics['received_hearts_'..c.platform] or 0)+count
+ local t=self.trial local m=R.measure(beat,self.signatures)
+ if not t or m<t.heartsAfter then return end
+ if c.platform=="tiktok" and not t.heartBaselineReady then t.heartBaselineReady=true count=0 end
+ self.metrics['heart_taps_'..c.platform]=self.metrics['heart_taps_'..c.platform]+count
+ t.tapRemainder=t.tapRemainder+count
+ local points=math.floor(t.tapRemainder/self.config.heart_taps_per_point)
+ t.tapRemainder=t.tapRemainder-points*self.config.heart_taps_per_point
+ t.heartPending=t.heartPending+points
+end
+function R:startLock(group,beat,now)
+ if self.trial then self:finishTrial(now,true,'lock') end
+ self.offset=0 self.locksUsed=self.locksUsed+1
+ self.lock={event_id=group.event_id,sender=group.sender,tokens=group.tokens,bpm=self.baseAt(beat),
+  startMeasure=R.measure(beat,self.signatures),measures=self.config.lock_min_measures}
+ self.lock.endMeasure=self.lock.startMeasure+self.lock.measures self.lock.endBeat=R.beat(self.lock.endMeasure,self.signatures)
+ self:tokenEvents(group,'active','Original BPM locked')
+end
+function R:process(c,beat,now)
+ if c.kind=='hearts' then self:hearts(c,beat) self:event(c.event_id,'applied')
+ elseif c.kind=='rescue' then
+  self.metrics.rescue_gifts=self.metrics.rescue_gifts+1 self.metrics.gift_points=self.metrics.gift_points+c.points
+  self:rescue(c.points,c,now)
  else
-  self.serial=self.serial+1
-  self.feed[#self.feed+1]={event_id='feed-'..self.serial,sender=command.sender,
-   bpm_delta=command.bpm_delta,count=1,last_at=now}
+  local units=c.kind=='trial' and self.trialUnits or self.lockUnits
+  for i=1,c.count do units[#units+1]=c end
+  self.metrics[c.kind..'_gifts']=self.metrics[c.kind..'_gifts']+c.count
+  self:event(c.event_id,'contributing','Waiting for enough gift units')
  end
- while #self.feed>12 do table.remove(self.feed,1) end
 end
-function R:apply(command,now)
- self.offset=self.offset+command.bpm_delta
- self.pendingDelta=self.pendingDelta-command.bpm_delta
- self.decayElapsed=0
- self:event(command.event_id,'applied')
- self.appliedThisStep[#self.appliedThisStep+1]=command
- self:announce(command,now)
-end
-function R:startLock(command,beat)
- self.lock={event_id=command.event_id,sender=command.sender,bpm=self:bpm(self.baseAt(beat)),
-  startMeasure=R.measure(beat,self.signatures),measures=command.measures}
- self.lock.endMeasure=self.lock.startMeasure+command.measures
- self.lock.endBeat=R.beat(self.lock.endMeasure,self.signatures)
- self:event(command.event_id,'active')
-end
-function R:advanceUnlocked(from,to)
- local elapsed=R.measure(to,self.signatures)-R.measure(from,self.signatures)
- self.decayElapsed=self.decayElapsed+math.max(0,elapsed)
- local steps=math.floor((self.decayElapsed+0.000001)/self.config.tempo_decay_measures)
- if steps>0 then
-  self.decayElapsed=self.decayElapsed-steps*self.config.tempo_decay_measures
-  self.offset=self.offset>0 and math.max(0,self.offset-steps) or math.min(0,self.offset+steps)
+function R:atBeat(beat,now)
+ local m=R.measure(beat,self.signatures) self.lastBeatUpdated=beat
+ if self.lock and beat>=self.lock.endBeat-0.000001 then
+  self:tokenEvents(self.lock,'completed','Lock ended')
+  self.completedLocks[#self.completedLocks+1]=self.lock.event_id self.lock=nil
  end
+ while self.actions[1] and self.actions[1].applyBeat<=beat do self:process(table.remove(self.actions,1),beat,now) end
+ while #self.trialUnits>=self.requiredUnits do
+  local g=self:group(self.trialUnits) self.strongQueue[#self.strongQueue+1]=g self:tokenEvents(g,'reserved','Strong trial reserved')
+ end
+ if not self.lock and #self.lockUnits>=self.requiredUnits and self:remainingLocks(beat)>0 then self:startLock(self:group(self.lockUnits),beat,now) end
+ local t=self.trial
+ if t then
+  if m>=t.heartsAfter then
+   if t.heartMeasure~=math.floor(m+0.000001) then t.heartMeasure=math.floor(m+0.000001) t.heartSpent=0 end
+   local unit=t.required/t.rise
+   local use=math.min(t.heartPending,math.max(0,unit-t.heartSpent),t.required-t.progress)
+   t.heartPending=t.heartPending-use t.heartSpent=t.heartSpent+use t.progress=t.progress+use t.heartPoints=t.heartPoints+use
+   self.offset=math.max(0,t.rise-math.floor(t.progress*t.rise/t.required+0.000001))
+   if self.offset==0 then self:finishTrial(now,true,'hearts') end
+  end
+ end
+ local canStart=not self.lock and not self.trial and m>=self.config.trial_intro_measures and R.measure(self.lastBeat,self.signatures)-m>=self.config.trial_tail_measures
+ if canStart and #self.strongQueue>0 then self:startTrial('strong',table.remove(self.strongQueue,1),beat,now)
+ elseif canStart and m>=self.restUntil and math.abs(m/8-math.floor(m/8+0.000001))<0.000001 and self.autoTargets[1] and m>=self.autoTargets[1] then
+  table.remove(self.autoTargets,1) self.autoDone=self.autoDone+1 self:startTrial('normal',nil,beat,now)
+ end
+ self.offset=self:applied(self.baseAt(beat))
 end
 function R:step(beat,now)
- self.appliedThisStep={}
+ self.now=now self.appliedThisStep={}
  if beat<0 then return end
- local cursor=self.lastBeatUpdated
- while cursor<=beat do
-  local nextAction=self.actions[1] and self.actions[1].applyBeat or math.huge
-  local nextEnd=self.lock and self.lock.endBeat or math.huge
-  local due=math.max(cursor,math.min(beat,nextAction,nextEnd))
-  if not self.lock then self:advanceUnlocked(cursor,due)
-  else
-   local elapsed=R.measure(due,self.signatures)-R.measure(cursor,self.signatures)
-   self.lockReserved=math.max(0,self.lockReserved-elapsed)
-  end
-  cursor=due
-  if self.lock and self.lock.endBeat<=cursor+0.000001 then
-   self:event(self.lock.event_id,'completed')
-   self.completedLocks[#self.completedLocks+1]=self.lock.event_id
-   while #self.completedLocks>128 do table.remove(self.completedLocks,1) end
-   self.lock=nil
-   for _,command in ipairs(self.held) do self:apply(command,now) end
-   self.held={}
-   if #self.locks>0 then self:startLock(table.remove(self.locks,1),cursor) end
-  end
-  while self.actions[1] and self.actions[1].applyBeat<=cursor+0.000001 do
-   local command=table.remove(self.actions,1)
-   if command.kind=='tempo' then
-    if self.lock then self.held[#self.held+1]=command self:event(command.event_id,'held','Waiting for lock release',self.lock.event_id)
-    else self:apply(command,now) end
-   elseif self.lock then
-    self.locks[#self.locks+1]=command self:event(command.event_id,'reserved','Lock queued')
-   else self:startLock(command,cursor) end
-  end
-  if cursor>=beat then break end
- end
- self.lastBeatUpdated=beat
- for i=#self.feed,1,-1 do if now-self.feed[i].last_at>self.config.tempo_notice_seconds then table.remove(self.feed,i) end end
- local base=self.baseAt(beat)
- self.metrics.max_overflow=math.max(self.metrics.max_overflow,math.max(0,math.abs(self.offset)-self:limit(base)))
+ for b=math.max(0,self.lastBeatUpdated+1),math.floor(beat+0.000001) do self:atBeat(b,now) end
+ for i=#self.feed,1,-1 do if now-self.feed[i].last_at>self.config.rescue_notice_seconds then table.remove(self.feed,i) end end
+end
+function R:finish(now)
+ self.now=now
+ if self.trial then self:finishTrial(now,false,'song ended') end
+ for _,c in ipairs(self.actions) do self:process(c,self.lastBeatUpdated,now) end self.actions={}
+ if self.lock then self:tokenEvents(self.lock,'completed','Song ended') self.lock=nil end
+ for _,units in ipairs({self.trialUnits,self.lockUnits,self.bankEvents}) do for _,c in ipairs(units) do self:event(c.event_id,'carried','Carried to next song') end end
+ for _,g in ipairs(self.strongQueue) do self:tokenEvents(g,'carried','Strong trial carried to next song') end
+end
+function R:export()
+ local events={} local function keep(c) if self.events[c.event_id] then events[c.event_id]=self.events[c.event_id] end end
+ for _,units in ipairs({self.trialUnits,self.lockUnits,self.bankEvents,self.actions}) do for _,c in ipairs(units) do keep(c) end end
+ for _,g in ipairs(self.strongQueue) do for _,c in ipairs(g.tokens) do keep(c) end end
+ return {actions=self.actions,trialUnits=self.trialUnits,lockUnits=self.lockUnits,strongQueue=self.strongQueue,
+  rescueBank=self.rescueBank,bankEvents=self.bankEvents,multiplier=self.multiplier,events=events}
+end
+function R:status(beat)
+ local t=self.trial
+ return {rank=self.rank,viewers=self.viewers,required_units=self.requiredUnits,trial=t and {
+  kind=t.kind,sender=t.sender,rise=t.rise,required_points=t.required,points=t.progress,
+  remaining_points=math.max(0,t.required-t.progress),heart_points=t.heartPoints,gift_points=t.giftPoints,
+  heart_pending=t.heartPending,hearts_enabled=R.measure(beat,self.signatures)>=t.heartsAfter} or nil,
+  trial_units=#self.trialUnits,trial_reserved=#self.strongQueue,lock_units=#self.lockUnits,
+  lock_remaining=self:remainingLocks(beat),locks_used=self.locksUsed,rescue_bank=self.rescueBank,
+  rescue_feed=self.feed,trial_results=self.results,resolution=self.resolution and (self.now or 0)-self.resolution.at<2 and self.resolution or nil,
+  auto_trial_unavailable=self.autoUnavailable,auto_trials_planned=self.autoDone+#self.autoTargets,metrics=self.metrics}
 end
 
 -- Greedy, deterministic inventory. Original chart rows and earlier planned

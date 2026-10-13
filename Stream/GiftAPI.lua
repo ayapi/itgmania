@@ -5,7 +5,10 @@ local directory = "Save/GiftAPI/"
 local config = {max_active_arrows=24, max_queued_arrows=512, max_tempo_effects=128,
                 min_rate=0.25, max_rate=3, min_lead_seconds=0.8,
                 tempo_limit_percent=0.15,tempo_stored_limit_percent=0.50,
-                tempo_decay_measures=4,lock_min_measures=4,tempo_notice_seconds=0.8}
+                tempo_decay_measures=4,lock_min_measures=4,tempo_notice_seconds=0.8,
+                trial_bpm_delta=10,trial_intro_measures=24,trial_tail_measures=16,
+                trial_second_probability=0.5,trial_fast_seconds=20,strong_heart_disabled_measures=4,
+                heart_taps_per_point=20,tiktok_max_delta=100000,lock_max_per_song=2,rescue_notice_seconds=1.2}
 local packetCache={}
 local screen
 local performance={max_update_ms=0,max_insert_ms=0,slow_updates=0}
@@ -20,7 +23,7 @@ local function read(path)
   contents=screen:GetGiftCommands()
  else
   local f=RageFileUtil.CreateRageFile()
-  if f:Open(path,1) then contents=f:ReadBytes(1048576) f:Close() end
+  if f:Open(path,1) then contents=f:ReadBytes(path==directory.."trial-state.json" and 8388608 or 1048576) f:Close() end
   f:destroy()
  end
  if not contents or contents=="" then return nil end
@@ -44,7 +47,7 @@ end
 local configured=read(directory.."config.json")
 if configured then
  for k,v in pairs(config) do
-  if type(configured[k])=="number" and configured[k]>0 then config[k]=configured[k] end
+  if type(configured[k])=="number" and configured[k]>=0 then config[k]=configured[k] end
  end
 end
 config.max_active_arrows=math.min(64,math.floor(config.max_active_arrows))
@@ -61,8 +64,10 @@ local bpmActor
 local noticeActors,tempoNotices={},{}
 local bubbleZoom=0.65
 local nameFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream Noto Sans JP.ini") and "Stream Noto Sans JP" or "Common Normal"
-local rules,lockActor,lifeActor
+local rules,lockActor
+local nativeCarry
 local inventoryTotal=0
+local trialDisqualified=false
 local nextLabelOrder=0
 local roundedBubbleVertices,goldBadgeVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
@@ -128,12 +133,8 @@ local function snapshot(ready, message)
   lockStatus={sender=l.sender,event_id=l.event_id,remaining_seconds=math.max(0,remaining),end_beat=l.endBeat,
    queued=#rules.locks,bpm=l.bpm}
  end
- local life,failed=1,false
  local masterNumber=GAMESTATE:GetMasterPlayerNumber()
- local meter=screen and screen:GetLifeMeter(masterNumber)
- if meter then life=meter:GetLife() end
  local stats=STATSMAN:GetCurStageStats():GetPlayerStageStats(masterNumber)
- failed=stats:GetFailed()
  local segments=0
  for _,combo in ipairs(stats:GetComboList()) do if combo.Count>0 then segments=segments+1 end end
  local judgments={}
@@ -150,8 +151,8 @@ local function snapshot(ready, message)
   for i=1,math.min(512,#state.results) do receipts[i]=state.results[(resultPage+i-1)%#state.results+1] end
   resultPage=(resultPage+#receipts)%#state.results
  end
- write(directory.."status.json",{protocol_version=3,ready=ready,reason=message or "",session=state.session,
-  server_id=state.server_id,cursor=state.cursor,players=state.players,results=receipts,
+ write(directory.."status.json",{protocol_version=5,ready=ready,reason=message or "",session=state.session,
+  server_id=state.server_id,cursor=state.cursor,carry_state=nativeCarry,players=state.players,results=receipts,
   song=song and song:GetDisplayMainTitle() or "", base_bpm=currentBpm,
   song_title=song and song:GetDisplayFullTitle() or "",
   song_artist=song and song:GetDisplayArtist() or "",
@@ -168,7 +169,8 @@ local function snapshot(ready, message)
   completed_locks=rules and rules.completedLocks or {},
   lock_remaining=rules and rules:remainingLocks(GAMESTATE:GetSongPosition():GetSongBeat()) or 0,
   note_slots_total=inventoryTotal,note_remaining=math.max(0,available-queueCount()),
-  life=life,failed=failed,metrics=rules and rules.metrics or {},
+  trial_state=rules and rules:status(GAMESTATE:GetSongPosition():GetSongBeat()) or {},
+  life=nil,failed=nil,metrics=rules and rules.metrics or {},
   current_combo=stats:GetCurrentCombo(),max_combo=stats:MaxCombo(),
   combo_breaks=math.max(0,segments-(stats:GetCurrentCombo()>0 and 1 or 0)),judgments=judgments,
   stream_mirror=SL.StreamMirrorOffsetX~=nil,
@@ -209,7 +211,7 @@ local function resetRate()
 end
 local function modified()
  -- Modified charts must not replace personal bests for the original chart.
- -- Native judgments, combo, life and the on-screen score remain enabled.
+ -- Native judgments and combo remain enabled.
  songOptions("ModsLevel_Song"):SaveScore(false)
  songOptions("ModsLevel_Current"):SaveScore(false)
 end
@@ -253,7 +255,7 @@ local function initialize()
   p.planAvailable=#p.notePlan p.planCursor=1
   inventoryTotal=inventoryTotal+#p.notePlan
   for _,level in ipairs({"ModsLevel_Stage","ModsLevel_Song","ModsLevel_Current"}) do
-   ps:GetPlayerOptions(level):FailSetting("FailType_EndOfSong")
+   ps:GetPlayerOptions(level):FailSetting("FailType_Off")
   end
   for _,note in ipairs(p.tracked) do p.original[noteKey(note[1],note[2])]=true end
   state.players[#state.players+1]=name
@@ -263,13 +265,25 @@ local function initialize()
  if originalHaste~=0 then reason="Turn off Haste before using GiftAPI" return false end
  state.session=tostring(GetTimeSinceStart()).."-"..tostring(math.random(1,100000000))
  state.effects={} state.queue={} state.active={} state.results={} resultById={}
- state.cursor=0 state.server_id=""
+ local carry=read(directory.."trial-state.json")
+ if not carry and FILEMAN:DoesFileExist(directory.."trial-state.json") then reason="Carry checkpoint is unreadable; restore its backup" return false end
+ carry=carry or {}
+ state.cursor=carry.cursor or 0 state.server_id=carry.server_id or ""
  local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
  local lastBeat=master.timing:GetBeatFromElapsedTime(song:GetLastSecond())
- rules=Rules.new(config,lastBeat,master.timing:GetTimeSignatures(true),function(beat) return master.timing:GetBPMAtBeat(beat) end)
+ local audience=read(directory.."audience.json") or {}
+ rules=Rules.new(config,lastBeat,master.timing:GetTimeSignatures(true),function(beat) return master.timing:GetBPMAtBeat(beat) end,carry.rules,(audience.tiktok or 0)+(audience.youtube or 0))
+ local taps=read(directory.."tiktok-baseline.json")
+ if taps then rules.tiktokTotal=taps.total rules.tiktokStream=taps.stream_id end
  GAMESTATE:SetFailTypeExplicitlySet()
  initialized=true stopped=false reason=""
  return true
+end
+local function persistCarry()
+ if not rules then return end
+ -- Persistent disk writes belong to the bridge's collector thread. The
+ -- existing asynchronous mailbox carries this checkpoint off the game thread.
+ nativeCarry={server_id=state.server_id,cursor=state.cursor,rules=rules:export()}
 end
 local function consume(now)
  local packet=read(directory.."commands.json")
@@ -280,9 +294,9 @@ local function consume(now)
  for _,command in ipairs(packet.commands) do
   if command.sequence>state.cursor then
    state.cursor=command.sequence
-   if command.session~=state.session then
+   if command.session~=state.session and command.session~="*" then
     result(command,"discarded","Command belongs to another song")
-   elseif command.kind=="tempo" or command.kind=="lock" then
+   elseif command.kind=="rescue" or command.kind=="trial" or command.kind=="lock" or command.kind=="hearts" then
     local accepted,why=rules:submit(command,GAMESTATE:GetSongPosition():GetSongBeat())
     if accepted then
      modified()
@@ -309,12 +323,15 @@ end
 local function updateTempo(now)
  local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
  if not master then return end
- local beat=master.ps:GetSongPosition():GetSongBeat()
+ local beat=GAMESTATE:GetSongPosition():GetSongBeat()
  local beforeBpm=currentBpm*effectiveRate
  currentBpm=master.timing:GetBPMAtBeat(beat)
  rules:step(beat,now)
+ if not trialDisqualified and rules.metrics.trials>0 then modified() trialDisqualified=true end
+ SL.StreamTrial=rules.trial and {bpm=rules:bpm(currentBpm),beat=beat} or nil
+ measured("max_carry_ms",persistCarry)
  for id,event in pairs(rules.changes) do
-  local r=resultById[id] if r then r.state=event.state r.reason=event.reason r.lock_event_id=event.lock_event_id end
+  local r=resultById[id] or result({event_id=id},event.state) if r then r.state=event.state r.reason=event.reason r.lock_event_id=event.lock_event_id end
  end
  rules.changes={}
  if currentBpm>0 then
@@ -650,6 +667,12 @@ local function updateBubbles()
 end
 local function judged(params)
  if not initialized or not params.Player then return end
+ if rules and params.TapNoteScore then
+  rules.metrics.judgments_by_phase=rules.metrics.judgments_by_phase or {trial={},normal={}}
+  local phase=rules.trial and 'trial' or 'normal'
+  local counts=rules.metrics.judgments_by_phase[phase]
+  counts[params.TapNoteScore]=(counts[params.TapNoteScore] or 0)+1
+ end
  local p=byname[ToEnumShortString(params.Player)]
  if not p then return end
  local seconds=p.ps:GetSongPosition():GetMusicSeconds()
@@ -701,9 +724,18 @@ local function judged(params)
  end
 end
 local function finish(message)
+ SL.StreamTrial=nil
+ if rules then
+  rules:finish(GetTimeSinceStart())
+  for id,event in pairs(rules.changes) do
+   local r=resultById[id] or result({event_id=id},event.state)
+   r.state=event.state r.reason=event.reason
+  end
+  rules.changes={} persistCarry()
+ end
  for _,note in ipairs(state.active) do hide(note) end
  for _,r in ipairs(state.results) do
-  if r.state=="queued" or r.state=="active" or r.state=="held" or r.state=="reserved" then r.state="discarded" r.reason=message end
+  if not rules.events[r.event_id] and (r.state=="queued" or r.state=="active") then r.state="discarded" r.reason=message end
  end
  state.active={} state.queue={} state.effects={}
  totalDelta=0
@@ -727,7 +759,7 @@ local af=Def.ActorFrame{
   end
   if bpmActor and bpmActor:GetVisible() then bpmActor:Draw() end
   if lockActor and lockActor:GetVisible() then lockActor:Draw() end
-  if lifeActor and lifeActor:GetVisible() then lifeActor:Draw() end
+  -- V5: only the browser rescue gauge is shown.
   for _,actor in ipairs(noticeActors) do if actor:GetVisible() then actor:Draw() end end
  end,
  OnCommand=function(self)
@@ -805,16 +837,6 @@ local af=Def.ActorFrame{
          end
         end
        end
-      end
-      if lifeActor then
-       local meter=screen:GetLifeMeter(master.pn)
-       local life=meter and meter:GetLife() or 1
-       if not master.lifeY then
-        local layout=GetGameplayLayout(master.pn,master.ps:GetPlayerOptions("ModsLevel_Current"):Reverse()>0.5)
-        master.lifeY=(layout.Judgment.y+layout.Combo.y)/2
-       end
-       lifeActor:xy(master.actor:GetX(),master.lifeY):visible(ready)
-       lifeActor:GetChild("Fill"):zoomto(128*math.max(0,life),5):diffuse(life<0.25 and color("#ff4040") or color("#39d638"))
       end
       for i,actor in ipairs(noticeActors) do
        local notice=tempoNotices[i]
@@ -957,13 +979,6 @@ af[#af+1]=Def.ActorFrame{
  LoadFont(nameFont)..{Name="Time",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(color("#34250e")):strokecolor(0,0,0,0):shadowcolor(color("#ecd799")):shadowlength(0.5) end},
 }
 
-af[#af+1]=Def.ActorFrame{
- Name="StreamLife",
- InitCommand=function(self) lifeActor=self self:visible(false) end,
- Def.Quad{Name="Frame",InitCommand=function(self) self:zoomto(132,9):diffuse(1,1,1,1) end},
- Def.Quad{InitCommand=function(self) self:zoomto(128,5):diffuse(0,0,0,0.9) end},
- Def.Quad{Name="Fill",InitCommand=function(self) self:halign(0):x(-64):zoomto(128,5):diffuse(0.2,0.8,0.2,1) end},
-}
 for i=1,3 do
  local index=i
  local notice=Def.ActorFrame{
