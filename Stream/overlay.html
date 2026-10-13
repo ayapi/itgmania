@@ -10,7 +10,8 @@
 :root{--bpm-x:540px;--bpm-bottom:717px}
 *{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Noto Color Emoji","Noto Sans JP",sans-serif;font-weight:700}
 [hidden]{display:none!important}
-main{position:relative;width:1080px;height:1920px}
+#trial-wash{position:fixed;inset:0;background:#ff871a;opacity:0;pointer-events:none;will-change:opacity;z-index:0}
+main{z-index:1;position:relative;width:1080px;height:1920px}
 .song{position:absolute;left:40px;top:135px;width:490px;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000,0 -2px 0 #000}
 h1{margin:0;font-size:40px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.artist{margin-top:6px;font-size:32px;line-height:1.3;overflow-wrap:anywhere}
 .effects{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 68px + var(--lock-space,0px));transform:translateX(-50%);width:470px}
@@ -31,6 +32,7 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
 #bank-status{font-size:18px}#effects li{font-size:20px;line-height:1.25;width:245px;max-width:245px}#effects .sender{max-width:185px}#effects .delta{font-family:inherit;font-size:20px;letter-spacing:0;-webkit-text-stroke:0;text-shadow:inherit}
 #result{margin-top:7px;color:#ffe69b}.gift-choice{display:flex;gap:4px;align-items:center;font-size:16px}.gift-choice img{width:24px;height:24px;object-fit:contain}
 </style>
+<div id="trial-wash" aria-hidden="true"></div>
 <main id="panel" hidden>
  <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
  <section class="menu note-menu"><h2>NOTE ATTACK</h2><div class="receipt" id="receipt">100円相当 / 1ノート</div><div class="stock" id="note-stock"></div><div class="rules" id="rules"></div></section>
@@ -55,7 +57,34 @@ const params=new URLSearchParams(location.search);
 for(const [key,css] of [['bpmX','--bpm-x'],['bpmBottom','--bpm-bottom']]){
  const value=Number(params.get(key));if(params.has(key)&&Number.isFinite(value))document.documentElement.style.setProperty(css,value+'px');
 }
-function render(status){
+// BPM clock: interpolate locally between snapshots instead of stepping at
+// the HTTP polling rate. No audio/microphone stream is needed.
+function trialPulseOpacity(beat,bpm){
+ const skip=Math.max(1,Math.ceil(bpm/180));
+ const phase=((beat/skip)%1+1)%1;
+ return 0.04+0.12*(1+Math.cos(phase*2*Math.PI))/2;
+}
+const wash=document.getElementById('trial-wash');
+let pulseClock=null;
+function clearPulse(){pulseClock=null;wash.style.opacity='0';}
+function syncPulse(status,networkSeconds=0){
+ if(status.protocol_version!==5||!status.ready||status.connected===false||!status.trial_state?.trial){clearPulse();return;}
+ const bpm=Number(status.effective_bpm),beat=Number(status.song_beat);
+ if(!Number.isFinite(bpm)||bpm<=0||!Number.isFinite(beat)){clearPulse();return;}
+ const age=Math.min(0.5,Math.max(0,Number(status.snapshot_age_seconds)||0)+networkSeconds);
+ pulseClock={beat:beat+age*bpm/60,bpm,at:performance.now()};
+}
+function animatePulse(now){
+ if(pulseClock){
+  const elapsed=(now-pulseClock.at)/1000;
+  if(elapsed>1.5)clearPulse();
+  else wash.style.opacity=String(trialPulseOpacity(pulseClock.beat+elapsed*pulseClock.bpm/60,pulseClock.bpm));
+ }
+ requestAnimationFrame(animatePulse);
+}
+requestAnimationFrame(animatePulse);
+function render(status,networkSeconds=0){
+ syncPulse(status,networkSeconds);
  const st=status.trial_state||{};
  panel.hidden=status.protocol_version!==5 || !(status.connected!==false && (status.ready || ((st.trial_results||[]).length && status.reason==='Gameplay ended')));
  if(panel.hidden){list.replaceChildren();rows.clear();return;}
@@ -96,9 +125,10 @@ function render(status){
 
 async function poll(){
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),2000);
+ const sentAt=performance.now();
  try{const response=await fetch('/api/status',{cache:'no-store',signal:controller.signal});
-  if(!response.ok)throw new Error('status');render(await response.json());
- }catch{panel.hidden=true;list.replaceChildren();rows.clear();}finally{clearTimeout(timeout);setTimeout(poll,250);}
+  if(!response.ok)throw new Error('status');const status=await response.json();render(status,(performance.now()-sentAt)/2000);
+ }catch{clearPulse();panel.hidden=true;list.replaceChildren();rows.clear();}finally{clearTimeout(timeout);setTimeout(poll,250);}
 }
 poll();
 </script>

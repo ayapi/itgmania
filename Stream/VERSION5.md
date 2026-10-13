@@ -85,8 +85,13 @@ center above native BPM; side menus only show gift/count information. anonymous 
 The final line reports resolved trials / total trials.
 
 Native BPM keeps its beat pulse and proportional font; the lock keeps its
-fixed-size Noto name, ellipsis, gold badge and seconds. Red/orange edge glows
-are behind notes, skip beats above 180 BPM and never pulse above 3Hz.
+fixed-size Noto name, ellipsis, gold badge and seconds. The OBS browser washes the full 1080×1920 canvas in orange during trials.
+It follows the native song beat/effective BPM, compensates snapshot age and
+interpolates at browser frame rate between polls. At >180 BPM it skips beats to
+keep the soft pulse at <=3Hz. Opacity varies gently from 4–16%; text sits above
+the wash. Pausing, trial resolution, disconnection or stale updates clear it.
+Native edge illumination is removed, so game-source scale and phone cropping
+cannot move or remove the effect. No audio capture or FFT is required.
 Chroma key remains disabled for native transparent capture.
 
 ## State and tests
@@ -111,5 +116,5 @@ delayed strong trials, blocked hearts, paid rescue, chained locks and carry.
 Local metrics include per-platform input, rank, trial duration/resolution,
 points, contributions, note inventory, combo/judgments and processing time.
 
-Emergency edges use a clear red/orange gradient outside arrow silhouettes,
-with beat-synchronized 26–48% opacity; only the edges pulse, never the full screen.
+`node Stream/test_trial_pulse.cjs` verifies local beat interpolation, snapshot-age
+compensation, speed changes, stale/error shutdown and pulse opacity/frequency.

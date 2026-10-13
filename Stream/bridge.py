@@ -151,6 +151,7 @@ class Bridge:
         try:
             stat = path.stat()
             status = json.loads(path.read_text(encoding='utf-8-sig'))
+            status['snapshot_age_seconds']=max(0,time.time()-stat.st_mtime)
             status['api_server_id'] = self.server_id
             status['connected'] = time.time() - stat.st_mtime <= 2.5
             if not status['connected'] and status.get('ready'):
