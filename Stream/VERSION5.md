@@ -85,11 +85,19 @@ center above native BPM; side menus only show gift/count information. anonymous 
 The final line reports resolved trials / total trials.
 
 Native BPM keeps its beat pulse and proportional font; the lock keeps its
-fixed-size Noto name, ellipsis, gold badge and seconds. The OBS browser washes the full 1080×1920 canvas in orange during trials.
+fixed-size Noto name, ellipsis, gold badge and seconds. A separate browser source
+`ITGmania 試練ライト` uses `/overlay?mode=light` and OBS `OBS_BLEND_SCREEN`.
+Run `python configure_trial_light.py` while OBS and its WebSocket are running
+to create/update it in the current scene, sized to the canvas and placed above
+the camera but below the game and information. Existing source transforms are preserved.
+The normal information source no longer contains the orange wash.
+The dedicated source is opaque black when inactive (neutral in Screen mode),
+and scales orange RGB brightness during trials; its alpha stays at 100%.
 It follows the native song beat/effective BPM, compensates snapshot age and
 interpolates at browser frame rate between polls. At >180 BPM it skips beats to
-keep the smooth pulse at <=3Hz. Opacity varies from 12–50%; text sits above
-the wash. Pausing, trial resolution, disconnection or stale updates clear it.
+keep the smooth pulse at <=3Hz. Light strength varies from 12–50%; game arrows
+and text sit above the light. Pausing, trial resolution, disconnection or stale
+updates return the light to black.
 Native edge illumination is removed, so game-source scale and phone cropping
 cannot move or remove the effect. No audio capture or FFT is required.
 Chroma key remains disabled for native transparent capture.

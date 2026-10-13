@@ -11,6 +11,10 @@
 *{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Noto Color Emoji","Noto Sans JP",sans-serif;font-weight:700}
 [hidden]{display:none!important}
 #trial-wash{position:fixed;inset:0;background:#ff871a;opacity:0;pointer-events:none;will-change:opacity;z-index:0}
+body:not(.light-only) #trial-wash{display:none}
+body.light-only{width:100vw;height:100vh;background:#000}
+body.light-only #trial-wash{background:#000;opacity:1;will-change:background-color}
+body.light-only main{display:none!important}
 main{z-index:1;position:relative;width:1080px;height:1920px}
 .song{position:absolute;left:40px;top:135px;width:490px;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000,0 -2px 0 #000}
 h1{margin:0;font-size:40px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.artist{margin-top:6px;font-size:32px;line-height:1.3;overflow-wrap:anywhere}
@@ -54,6 +58,10 @@ const rows=new Map();let session;
 let receiptId;
 const number=value=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1,useGrouping:false}).format(value);
 const params=new URLSearchParams(location.search);
+// OBS composites this dedicated source with SCREEN. Black contributes no
+// light; changing RGB brightness controls blend strength without alpha fades.
+const lightOnly=params.get('mode')==='light';
+document.body.classList.toggle('light-only',lightOnly);
 for(const [key,css] of [['bpmX','--bpm-x'],['bpmBottom','--bpm-bottom']]){
  const value=Number(params.get(key));if(params.has(key)&&Number.isFinite(value))document.documentElement.style.setProperty(css,value+'px');
 }
@@ -66,7 +74,13 @@ function trialPulseOpacity(beat,bpm){
 }
 const wash=document.getElementById('trial-wash');
 let pulseClock=null;
-function clearPulse(){pulseClock=null;wash.style.opacity='0';}
+function setPulseStrength(strength){
+ if(lightOnly){
+  wash.style.opacity='1';
+  wash.style.backgroundColor=`rgb(${Math.round(255*strength)},${Math.round(135*strength)},${Math.round(26*strength)})`;
+ }else wash.style.opacity='0';
+}
+function clearPulse(){pulseClock=null;setPulseStrength(0);}
 function syncPulse(status,networkSeconds=0){
  if(status.protocol_version!==5||!status.ready||status.connected===false||!status.trial_state?.trial){clearPulse();return;}
  const bpm=Number(status.effective_bpm),beat=Number(status.song_beat);
@@ -78,7 +92,7 @@ function animatePulse(now){
  if(pulseClock){
   const elapsed=(now-pulseClock.at)/1000;
   if(elapsed>1.5)clearPulse();
-  else wash.style.opacity=String(trialPulseOpacity(pulseClock.beat+elapsed*pulseClock.bpm/60,pulseClock.bpm));
+  else setPulseStrength(trialPulseOpacity(pulseClock.beat+elapsed*pulseClock.bpm/60,pulseClock.bpm));
  }
  requestAnimationFrame(animatePulse);
 }
