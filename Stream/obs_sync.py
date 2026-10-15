@@ -17,6 +17,12 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 class OBSError(Exception):
     pass
 
+
+def show_game(status):
+    """Evaluation has its own heartbeat; ready remains exclusive to gameplay."""
+    return status.get('connected') is not False and bool(status.get('ready') or
+        (status.get('screen') == 'evaluation' and status.get('evaluation_visible')))
+
 def remove_stale_filters(obs, source_name, current_name):
     """Recover only filters created by this controller on an earlier run."""
     present = obs.call('GetSourceFilterList', dict(sourceName=source_name))['filters']
@@ -178,7 +184,7 @@ def target_items(obs, source_name, scene_name=None):
 
 def main(argv=None):
     default_config = Path(os.environ.get('APPDATA', ''))/'obs-studio/plugin_config/obs-websocket/config.json'
-    parser = argparse.ArgumentParser(description='プレイ中だけOBSゲームキャプチャを表示します。')
+    parser = argparse.ArgumentParser(description='プレイ中と結果画面でOBSゲームキャプチャを表示します。')
     parser.add_argument('--api-url', default='http://127.0.0.1:8765')
     parser.add_argument('--obs-config', default=str(default_config), help='OBS WebSocket設定ファイル。パスワードは自動読込')
     parser.add_argument('--obs-host', default='127.0.0.1')
@@ -222,8 +228,8 @@ def main(argv=None):
                     last_browser_server_id = None
                 try:
                     with urlopen(args.api_url.rstrip('/')+'/api/status', timeout=1) as response: status = json.load(response)
-                    playing = bool(status.get('ready'))
-                    reason = 'プレイ中' if playing else '選曲中・終了・ポーズなど'
+                    playing = show_game(status)
+                    reason = ('結果画面' if status.get('screen') == 'evaluation' else 'プレイ中') if playing else '選曲中・終了・ポーズなど'
                     server_id = status.get('api_server_id')
                     if server_id and server_id != last_browser_server_id:
                         try:

@@ -52,7 +52,7 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   contributions carry. Trial contributions and reservations also carry.
 - Notes retain the existing eighth-note plan, hold occupancy, two-foot limit,
   no consecutive added jumps and visible-field lead. Sold-out notes are rejected.
-- Fail is Off and life/letter-grade displays are hidden in streamer mode.
+- Fail is Off and the gameplay life display is hidden in streamer mode.
   Combo remains; the browser shows a single rescue gauge and trial results.
 
 Short songs without an eligible auto-trial interval report
@@ -120,6 +120,23 @@ updates return the light to black.
 Native edge illumination is removed, so game-source scale and phone cropping
 cannot move or remove the effect. No audio capture or FFT is required.
 Chroma key remains disabled for native transparent capture.
+
+### Compact results in OBS
+
+StreamerMode uses a transparent results card in both the normal left column
+and the same right stream column as gameplay, preserving the OBS capture's
+crop and transform. It contains the native Simply Love grade, total percent
+score, and only FANTASTIC / EXCELLENT / GREAT / DECENT / WAY OFF / MISS counts.
+The grade and percent use the existing native stage statistics and grade
+thresholds. Hands, holds, mines, rolls, graphs and other panes are omitted.
+Stage-stat storage and keyboard restart handling are preserved.
+
+Evaluation publishes `screen: "evaluation"`, `evaluation_visible: true` and
+`evaluation: {grade, score, percent, judgments}` at 10Hz. `ready` stays false
+so note gifts cannot be placed after a song. The OBS controller displays
+gameplay or a live evaluation heartbeat, hides on evaluation exit/selection,
+and also hides stale/disconnected evaluation snapshots. Run
+`python stream_results.py <runtime-root>` for the theme-only installer.
 
 Only warning/clear additions from Version 6-2 are applied here. The user's
 approved full-canvas Screen-blended orange light and metallic-gold lock badge

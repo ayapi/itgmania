@@ -5,6 +5,7 @@ from quiet_menus import install as quiet_menus
 from compact_judgments import install as compact_judgments
 from stream_life import install as stream_life
 from trial_theme import install as trial_theme
+from stream_results import install as stream_results
 
 def install(root):
     root = root.resolve()
@@ -99,6 +100,7 @@ end
     compact_judgments(root)
     stream_life(root)
     trial_theme(root)
+    stream_results(root)
     (root/'start-game.cmd').write_bytes(
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_api_background.py\r\n'

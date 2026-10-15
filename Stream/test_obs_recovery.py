@@ -12,6 +12,14 @@ class FakeOBS:
         self.removed.append(data['filterName'])
 
 class RecoveryTests(unittest.TestCase):
+    def test_game_and_evaluation_visibility(self):
+        self.assertTrue(obs_sync.show_game(dict(ready=True,connected=True)))
+        evaluation=dict(ready=False,connected=True,screen='evaluation',evaluation_visible=True)
+        self.assertTrue(obs_sync.show_game(evaluation))
+        self.assertFalse(obs_sync.show_game(dict(evaluation,connected=False)))
+        self.assertFalse(obs_sync.show_game(dict(evaluation,evaluation_visible=False)))
+        self.assertFalse(obs_sync.show_game(dict(evaluation,screen='selection')))
+        self.assertFalse(obs_sync.show_game(dict(ready=False)))
     def test_removes_only_prior_controller_filters(self):
         current = 'ITGmania GiftAPI 表示連動 12345678'
         old = 'OutFox GiftAPI 表示連動 abcdef01'
