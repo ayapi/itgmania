@@ -27,13 +27,13 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   in the final measure (4 → 3 → 2 → 1 for 4/4). The game plays a short original
   notice chime and beat ticks; sounds play once, not in both browser sources.
   Speed and orange light begin only when the trial actually starts.
-- Trial entry ramps the actual audio/chart rate over the first musical beat
-  from the announced start boundary, using smoothstep easing. Both automatic
-  and strong trials use it. Rule points and target offset activate immediately;
-  BPM text and published effective BPM follow the applied rate. Every decrease
-  from rescue, clear or lock also eases over one beat, starting from the rate
-  actually playing. A new decrease during a ramp retargets from that current
-  rate, avoiding jumps. Rule effects still activate at their original times.
+- All trial/rescue/clear/lock rate transitions change at a constant 10 BPM
+  per musical beat in either direction: +10 takes 1 beat, +16 takes 1.6 beats,
+  and -5 takes 0.5 beats. Trial entry begins on the announced start boundary.
+  A target change during a ramp retargets from the rate actually playing and
+  recalculates duration from the remaining BPM difference, avoiding jumps.
+  Rule points and target offset activate immediately; BPM text and published
+  effective BPM follow the applied audio/chart rate.
 - The native cue's outlined font is drawn once into an undisplayed 256×64
   texture during screen setup, before music starts. This warms the first
   rendering path without a visible flash or a playing/silent sound workaround.

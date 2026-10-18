@@ -178,7 +178,7 @@ local function snapshot(ready, message)
   active_tempo_effects=tempoEffects,
   tempo_feed=rules and rules.feed or {},bpm_offset=rules and rules.offset or 0,
   native_tempo_notice=true,tempo_notice=tempoNotices,native_trial_panel=true,
-  trial_rate_ramp=trialRateRamp and {start_beat=trialRateRamp.beat,end_beat=trialRateRamp.beat+1,from_rate=trialRateRamp.from} or nil,
+  trial_rate_ramp=trialRateRamp and {start_beat=trialRateRamp.beat,end_beat=trialRateRamp.beat+trialRateRamp.duration,from_rate=trialRateRamp.from} or nil,
   native_name_font=nameFont,native_name_font_mapping="unicode_range_v2",
   note_feed=noteFeed,
   pending_bpm_delta=rules and rules.pendingDelta or 0,
@@ -351,10 +351,7 @@ local function updateTempo(now)
  local previousTrial=rules.trial
  local announcement=rules.announcement
  rules:step(beat,now)
- if rules.trial and rules.trial~=previousTrial then
-  -- Start on the announced measure boundary, not on a later API poll.
-  trialRateRamp={beat=announcement and announcement.startBeat or beat,from=effectiveRate}
- end
+ local startedTrial=rules.trial and rules.trial~=previousTrial
  if not trialDisqualified and rules.metrics.trials>0 then modified() trialDisqualified=true end
  measured("max_carry_ms",persistCarry)
  for id,event in pairs(rules.changes) do
@@ -365,16 +362,18 @@ local function updateTempo(now)
   local limit=rules:limit(currentBpm)
   local bpm=math.max(currentBpm-limit,math.min(currentBpm+limit,rules:bpm(currentBpm)))
   local rate=bpm/currentBpm
-  if previousTargetRate and rate<previousTargetRate-0.00001 then
-   -- Rescue, clear and locks all return smoothly from the rate actually
-   -- playing, including a reversal partway through the entry ramp.
-   trialRateRamp={beat=beat,from=effectiveRate}
+  if startedTrial or (previousTargetRate and math.abs(rate-previousTargetRate)>0.00001) then
+   -- Constant 10 BPM per musical beat in either direction. Retarget from
+   -- the rate actually playing, so partial ramps never cause a jump.
+   local duration=math.abs(rate-effectiveRate)*currentBpm/10
+   trialRateRamp=duration>0.00001 and {
+    beat=startedTrial and announcement and announcement.startBeat or beat,
+    from=effectiveRate,duration=duration} or nil
   end
   previousTargetRate=rate
   if trialRateRamp then
-   local phase=math.max(0,math.min(1,beat-trialRateRamp.beat))
-   local smooth=phase*phase*(3-2*phase)
-   rate=trialRateRamp.from+(rate-trialRateRamp.from)*smooth
+   local phase=math.max(0,math.min(1,(beat-trialRateRamp.beat)/trialRateRamp.duration))
+   rate=trialRateRamp.from+(rate-trialRateRamp.from)*phase
    if phase>=1 then trialRateRamp=nil end
   end
   applyRate(rate)
