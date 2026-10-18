@@ -30,8 +30,10 @@ fixed gift-name bubbles remain. No executable replacement is needed.
 - Trial entry ramps the actual audio/chart rate over the first musical beat
   from the announced start boundary, using smoothstep easing. Both automatic
   and strong trials use it. Rule points and target offset activate immediately;
-  BPM text and published effective BPM follow the applied rate. Rescue and
-  locks retain their existing timing; ending a trial cancels any pending ramp.
+  BPM text and published effective BPM follow the applied rate. Every decrease
+  from rescue, clear or lock also eases over one beat, starting from the rate
+  actually playing. A new decrease during a ramp retargets from that current
+  rate, avoiding jumps. Rule effects still activate at their original times.
 - The native cue's outlined font is drawn once into an undisplayed 256×64
   texture during screen setup, before music starts. This warms the first
   rendering path without a visible flash or a playing/silent sound workaround.

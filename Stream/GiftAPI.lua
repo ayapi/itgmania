@@ -75,7 +75,7 @@ local roundedBubbleVertices,goldBadgeVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
-local trialRateRamp
+local trialRateRamp,previousTargetRate
 local resultById={}
 local lastReadyFrame
 local lastMetricFrame
@@ -220,6 +220,7 @@ local function applyRate(rate)
 end
 local function resetRate()
  trialRateRamp=nil
+ previousTargetRate=nil
  if initialized then
   songOptions("ModsLevel_Song"):MusicRate(baseline)
   songOptions("ModsLevel_Current"):MusicRate(baseline)
@@ -353,7 +354,7 @@ local function updateTempo(now)
  if rules.trial and rules.trial~=previousTrial then
   -- Start on the announced measure boundary, not on a later API poll.
   trialRateRamp={beat=announcement and announcement.startBeat or beat,from=effectiveRate}
- elseif not rules.trial then trialRateRamp=nil end
+ end
  if not trialDisqualified and rules.metrics.trials>0 then modified() trialDisqualified=true end
  measured("max_carry_ms",persistCarry)
  for id,event in pairs(rules.changes) do
@@ -364,6 +365,12 @@ local function updateTempo(now)
   local limit=rules:limit(currentBpm)
   local bpm=math.max(currentBpm-limit,math.min(currentBpm+limit,rules:bpm(currentBpm)))
   local rate=bpm/currentBpm
+  if previousTargetRate and rate<previousTargetRate-0.00001 then
+   -- Rescue, clear and locks all return smoothly from the rate actually
+   -- playing, including a reversal partway through the entry ramp.
+   trialRateRamp={beat=beat,from=effectiveRate}
+  end
+  previousTargetRate=rate
   if trialRateRamp then
    local phase=math.max(0,math.min(1,beat-trialRateRamp.beat))
    local smooth=phase*phase*(3-2*phase)
