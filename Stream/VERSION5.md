@@ -149,10 +149,11 @@ without restarting OBS. `trial_notice_measures` defaults to 4 and
 
 ### Trial layout experiment (2026-10-18)
 
-The native trial/lock/BPM group has moved 180 logical pixels down, below the
-four receptors. BPM is at y=248, the player-side cue at y=208, judgment at
-y=340 and combo at y=380 (480-high logical screen). The normal judgment/combo
-gap is retained. Gift-note cards keep their existing positions.
+The order is judgment → four receptors → combo → trial/lock → BPM. Judgment
+is at y=60, receptors at y=115, combo at y=164, player-side cue at y=248
+and BPM at y=288 (480-high logical screen). The trial/BPM group is shifted
+220 logical pixels from the original top layout, with enough clearance for
+the larger browser trial panel below combo. Gift-note cards keep their positions.
 `stream_hud_layout.py <runtime-root>` applies the matching theme anchors.
 The OBS information source's `bpmBottom` anchor must receive the same shift
 scaled by the current game source's vertical scale; capture transforms remain

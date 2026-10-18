@@ -62,7 +62,7 @@ local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}
 local noteFeed={}
 local byname, containers, bubbleActors={}, {}, {}
 local bpmActor
-local hudShift=180 -- Trial/BPM block now sits below the receptor row.
+local hudShift=220 -- Trial/BPM block follows the combo below receptors.
 local noticeActors,tempoNotices={},{}
 local bubbleZoom=0.65
 local nameFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream Noto Sans JP.ini") and "Stream Noto Sans JP" or "Common Normal"

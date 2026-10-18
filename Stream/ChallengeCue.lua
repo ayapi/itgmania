@@ -16,7 +16,7 @@ local af=Def.ActorFrame{
    local st,beat,x,ready=get()
    local label=self:GetChild('Label') local sender=self:GetChild('Sender')
    if not st or not ready then label:visible(false) sender:visible(false) return end
-   self:x(x):y(208)
+   self:x(x):y(248)
    local a,r=st.announcement,st.resolution
    local text,scale,tint='',0.8,color('#ffe39b')
    if r then
