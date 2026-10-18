@@ -145,6 +145,22 @@ local function snapshot(ready, message)
  end
  judgments.Held=stats:GetHoldNoteScores("HoldNoteScore_Held")
  judgments.LetGo=stats:GetHoldNoteScores("HoldNoteScore_LetGo")
+ -- Record the real actor alongside native counts, so a missing number can
+ -- be distinguished from a hidden option, autoplay, or a combo never earned.
+ local master=byname[ToEnumShortString(masterNumber)]
+ local combo=master and master.actor:GetChild('Combo')
+ local number=combo and combo.GetChild and combo:GetChild('Number')
+ local mods=SL[ToEnumShortString(masterNumber)].ActiveModifiers
+ local options=GAMESTATE:GetPlayerState(masterNumber):GetPlayerOptions('ModsLevel_Current')
+ local comboDisplay={hidden_by_option=mods.HideCombo or false,
+  show_at=THEME:GetMetric('Combo','ShowComboAt'),blind=options:Blind(),autoplay=options:PlayerAutoPlay(),
+  actor_present=combo~=nil,actor_visible=combo and combo:GetVisible() or false,
+  number_present=number~=nil,number_visible=number and number:GetVisible() or false,
+  text=number and number:GetText() or '',width=number and number:GetWidth() or 0,
+  height=number and number:GetHeight() or 0,
+  actor_alpha=combo and combo:GetDiffuse()[4] or 0,number_alpha=number and number:GetDiffuse()[4] or 0,
+  logical_y=combo and combo:GetY()+SCREEN_HEIGHT/2 or nil,
+  under_field=THEME:GetMetric('Player','ComboUnderField')}
  -- Rotate bounded receipt pages. Held/queued events keep their final
  -- outcome even during a busy lock, without serializing all history at 60fps.
  local receipts={}
@@ -173,7 +189,7 @@ local function snapshot(ready, message)
   note_slots_total=inventoryTotal,note_remaining=math.max(0,available-queueCount()),
   trial_state=rules and rules:status(GAMESTATE:GetSongPosition():GetSongBeat()) or {},
   life=nil,failed=nil,metrics=rules and rules.metrics or {},
-  current_combo=stats:GetCurrentCombo(),max_combo=stats:MaxCombo(),
+  current_combo=stats:GetCurrentCombo(),max_combo=stats:MaxCombo(),combo_display=comboDisplay,
   combo_breaks=math.max(0,segments-(stats:GetCurrentCombo()>0 and 1 or 0)),judgments=judgments,
   stream_mirror=SL.StreamMirrorOffsetX~=nil,
   stream_mirror_offset_pixels=(SL.StreamMirrorOffsetX or 0)*DISPLAY:GetDisplayWidth()/SCREEN_WIDTH,

@@ -147,6 +147,12 @@ without restarting OBS. `trial_notice_measures` defaults to 4 and
 
 ## State and tests
 
+`combo_display` records the actual native combo actor/text/visibility/alpha,
+logical position, font dimensions, HideCombo, Blind and autoplay option in
+status and metrics. This distinguishes a hidden display from a native combo
+that has not reached the existing four-hit threshold. It does not change
+counts, visibility rules, miss-streak suppression or layout.
+
 ### Trial layout experiment (2026-10-18)
 
 The order is judgment → four receptors → combo → trial/lock → BPM. Judgment

@@ -176,12 +176,14 @@ class Bridge:
                 if receipts_changed:self.save_state()
                 key = (status.get('session'), int(status.get('music_seconds', 0)),
                        status.get('ready'), status.get('bpm_offset'),status.get('pending_bpm_delta'),
-                       (status.get('bpm_lock') or {}).get('event_id'), status.get('failed'))
+                       (status.get('bpm_lock') or {}).get('event_id'), status.get('failed'),
+                       status.get('current_combo'), (status.get('combo_display') or {}).get('text'),
+                       (status.get('combo_display') or {}).get('actor_visible'))
                 if key != self._metric_key and status.get('protocol_version') == 5:
                     fields = ['session','song_title','music_seconds','song_beat','base_bpm','effective_bpm',
                               'bpm_offset','bpm_delta','pending_bpm_delta','bpm_overflow','bpm_lock',
                               'note_remaining','lock_remaining','life','failed','ready','metrics',
-                              'current_combo','max_combo','combo_breaks','judgments','trial_state']
+                              'current_combo','max_combo','combo_breaks','combo_display','judgments','trial_state']
                     self.record('status', {f: status.get(f) for f in fields})
                     self._metric_key = key
                 status['api_rejections'] = self.rejections

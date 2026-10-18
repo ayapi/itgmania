@@ -29,6 +29,14 @@ class V5Tests(unittest.TestCase):
   self.assertEqual(self.api.commands[-1]['points'],6)
  def test_unknown_mapping_rejected(self):
   with self.assertRaises(APIError):self.api.input('gift',dict(sender='A',platform='tiktok',gift_id='unknown'))
+ def test_combo_actor_changes_are_recorded_within_one_second(self):
+  self.s.update(music_seconds=12,current_combo=4,combo_display=dict(text='4',actor_visible=True))
+  self.write();self.api.status()
+  self.s.update(current_combo=5,combo_display=dict(text='5',actor_visible=True))
+  self.write();self.api.status()
+  records=[json.loads(line) for line in (self.api.directory/'stream-metrics.jsonl').read_text(encoding='utf-8').splitlines()]
+  records=[row for row in records if row['kind']=='status']
+  self.assertEqual([row['combo_display']['text'] for row in records],['4','5'])
  def test_bool_rejected(self):
   for kind,data in [('rescue',{'points':True}),('trial',{'count':True})]:
    with self.assertRaises(APIError):validate(kind,dict(sender='A',**data))
