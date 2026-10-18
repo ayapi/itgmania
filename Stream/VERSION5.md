@@ -27,6 +27,13 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   in the final measure (4 → 3 → 2 → 1 for 4/4). The game plays a short original
   notice chime and beat ticks; sounds play once, not in both browser sources.
   Speed and orange light begin only when the trial actually starts.
+- The native cue's outlined font is drawn once into an undisplayed 256×64
+  texture during screen setup, before music starts. This warms the first
+  rendering path without a visible flash or a playing/silent sound workaround.
+  A cold first warning previously caused a reproducible 190–254ms frame gap;
+  disabling sounds did not remove it, while hiding the text did. Pre-rendering
+  removes that first-warning stall in native profiling runs. Countdown/clear
+  timing and the normal screen layout are unchanged.
 - Hearts during warnings are ignored. Paid rescue gifts retain the existing
   bank behavior and apply to the next trial, preserving their paid value.
 - A lock during a warning reserves it again and restarts a full four-measure

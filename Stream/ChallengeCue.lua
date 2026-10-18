@@ -12,6 +12,14 @@ end
 local af=Def.ActorFrame{
  Name='StreamChallengeCue',
  OnCommand=function(self)
+  -- Loading a font does not exercise its first stroked draw. Render
+  -- it once into an undisplayed texture during the pre-song screen setup.
+  local warmup=self:GetChild('FontWarmup')
+  if warmup then
+   local started=GetTimeSinceStart()
+   warmup:visible(true):Draw():visible(false)
+   Trace(string.format('ChallengeCue font warmup: %.1f ms',(GetTimeSinceStart()-started)*1000))
+  end
   self:SetUpdateFunction(function()
    local st,beat,x,ready=get()
    local label=self:GetChild('Label') local sender=self:GetChild('Sender')
@@ -49,4 +57,14 @@ local af=Def.ActorFrame{
  Def.Sound{Name='TickSound',File='./ChallengeTick.wav'},
  Def.Sound{Name='ClearSound',File='./ChallengeClear.wav'},
 }
+if SupportsRenderToTexture() then
+ af[#af+1]=Def.ActorFrameTexture{
+  Name='FontWarmup',
+  InitCommand=function(self) self:SetWidth(256):SetHeight(64):EnableAlphaBuffer(true):Create():visible(false) end,
+  LoadFont(font)..{
+   Text='CHALLENGE ATTACK CLEAR! 0123456789 自動試練 テスト視聴者 ほか人 まで小節',
+   InitCommand=function(self) self:xy(128,32):zoom(0.8):diffuse(color('#ffe39b')):strokecolor(0,0,0,1):shadowlength(0) end,
+  },
+ }
+end
 return af
