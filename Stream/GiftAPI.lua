@@ -62,7 +62,7 @@ local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}
 local noteFeed={}
 local byname, containers, bubbleActors={}, {}, {}
 local bpmActor
-local hudShift=220 -- Trial/BPM block follows the combo below receptors.
+local hudShift=96 -- BPM is immediately below receptors; trials/locks follow.
 local noticeActors,tempoNotices={},{}
 local bubbleZoom=0.65
 local nameFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream Noto Sans JP.ini") and "Stream Noto Sans JP" or "Common Normal"
@@ -834,7 +834,7 @@ local af=Def.ActorFrame{
       if lockActor then
        local lock=rules.lock
        local clearing=rules.resolution and rules.resolution.resolved and beat<rules.resolution.end_beat
-       lockActor:xy(master.actor:GetX(),(#tempoNotices>0 and (51-(#tempoNotices-1)*13-16) or 49)+hudShift):visible(lock~=nil and ready and not clearing)
+       lockActor:xy(master.actor:GetX(),195+#tempoNotices*13):visible(lock~=nil and ready and not clearing)
        if lock then
         local remaining=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate)
         local secondsText=string.format("%.1fs",remaining)
@@ -876,7 +876,7 @@ local af=Def.ActorFrame{
         local nw,dw=sender:GetZoomedWidth(),delta:GetZoomedWidth()
         sender:x(-(nw+dw+4)/2)
         delta:x((nw-dw+4)/2)
-        actor:xy(master.actor:GetX(),51-(#tempoNotices-i)*13+hudShift)
+        actor:xy(master.actor:GetX(),195+(i-1)*13)
         actor:diffusealpha(math.min(1,(config.tempo_notice_seconds-(now-notice.last_at))/0.12))
        end
       end

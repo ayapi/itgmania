@@ -32,6 +32,7 @@ return Def.ActorFrame{
     -- Fade only the already-rendered notes. Stationary cards and BPM
     -- must stay opaque even when their top slots occupy this region.
     if fade then fade:xy(player:GetX(),32):Draw() end
+    if SL.StreamFeedbackAfterFade then SL.StreamFeedbackAfterFade:xy(player:GetX(),player:GetY()):Draw() end
     if gifts then gifts:playcommand("StreamMirrorDraw") end
    end)
    if not ok then

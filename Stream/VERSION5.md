@@ -155,15 +155,18 @@ counts, visibility rules, miss-streak suppression or layout.
 
 ### Trial layout experiment (2026-10-18)
 
-The order is judgment → four receptors → combo → trial/lock → BPM. Judgment
-is at y=60, receptors at y=115, combo at y=164, player-side cue at y=248
-and BPM at y=288 (480-high logical screen). The trial/BPM group is shifted
-220 logical pixels from the original top layout, with enough clearance for
-the larger browser trial panel below combo. Gift-note cards keep their positions.
+The order is combo → judgment → four receptors → BPM → trial/lock. Combo
+is at y=36, judgment at y=68, receptors at y=115, BPM at y=164, lock at
+y=195 and the player-side cue at y=220 (480-high logical screen). The browser
+trial panel grows downward from below BPM. The original theme's automatic
+combo-below-judgment adjustment is overridden only in normal streaming mode.
+Gift-note cards keep their existing positions.
+Feedback near the top fade is redrawn after the note alpha mask, in both
+player and stream columns, so the top combo remains opaque.
 `stream_hud_layout.py <runtime-root>` applies the matching theme anchors.
 The OBS information source's `bpmBottom` anchor must receive the same shift
 scaled by the current game source's vertical scale; capture transforms remain
-unchanged. Trial panels stay above BPM, within the space below the receptors.
+unchanged. Trial panels stay below BPM, within the space below the receptors.
 
 `start-test.cmd` no longer sends note additions by default. It continues hearts,
 rescue points, strong trials and locks. `start-test.cmd --with-notes` restores
