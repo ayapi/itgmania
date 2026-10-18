@@ -62,6 +62,7 @@ local state={session="", server_id="", cursor=0, effects={}, queue={}, active={}
 local noteFeed={}
 local byname, containers, bubbleActors={}, {}, {}
 local bpmActor
+local hudShift=180 -- Trial/BPM block now sits below the receptor row.
 local noticeActors,tempoNotices={},{}
 local bubbleZoom=0.65
 local nameFont=FILEMAN:DoesFileExist(THEME:GetCurrentThemeDirectory().."Fonts/Stream Noto Sans JP.ini") and "Stream Noto Sans JP" or "Common Normal"
@@ -806,7 +807,7 @@ local af=Def.ActorFrame{
      if master then
       local phase=beat-math.floor(beat)
       local pulse=1+0.12*math.exp(-phase*12)
-      bpmActor:xy(master.actor:GetX(),68):zoom(pulse)
+      bpmActor:xy(master.actor:GetX(),68+hudShift):zoom(pulse)
       local bpm=currentBpm*effectiveRate
       local colorName=bpm>currentBpm+0.01 and "Up" or bpm<currentBpm-0.01 and "Down" or "Base"
       local value=string.format("%.1f",bpm):gsub("%.0$","")
@@ -817,7 +818,7 @@ local af=Def.ActorFrame{
       if lockActor then
        local lock=rules.lock
        local clearing=rules.resolution and rules.resolution.resolved and beat<rules.resolution.end_beat
-       lockActor:xy(master.actor:GetX(),#tempoNotices>0 and (51-(#tempoNotices-1)*13-16) or 49):visible(lock~=nil and ready and not clearing)
+       lockActor:xy(master.actor:GetX(),(#tempoNotices>0 and (51-(#tempoNotices-1)*13-16) or 49)+hudShift):visible(lock~=nil and ready and not clearing)
        if lock then
         local remaining=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate)
         local secondsText=string.format("%.1fs",remaining)
@@ -859,7 +860,7 @@ local af=Def.ActorFrame{
         local nw,dw=sender:GetZoomedWidth(),delta:GetZoomedWidth()
         sender:x(-(nw+dw+4)/2)
         delta:x((nw-dw+4)/2)
-        actor:xy(master.actor:GetX(),51-(#tempoNotices-i)*13)
+        actor:xy(master.actor:GetX(),51-(#tempoNotices-i)*13+hudShift)
         actor:diffusealpha(math.min(1,(config.tempo_notice_seconds-(now-notice.last_at))/0.12))
        end
       end
@@ -875,7 +876,7 @@ local af=Def.ActorFrame{
       local half=98
       for _,note in ipairs(state.active) do
        local layout=note.labelGeometry
-       if not note.done and layout and math.abs(layout.y-68)<(note.labelHeight/2+12) then
+       if not note.done and layout and math.abs(layout.y-(68+hudShift))<(note.labelHeight/2+12) then
         half=math.min(half,math.abs(layout.edge-master.actor:GetX()))
        end
       end

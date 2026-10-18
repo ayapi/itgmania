@@ -147,6 +147,21 @@ without restarting OBS. `trial_notice_measures` defaults to 4 and
 
 ## State and tests
 
+### Trial layout experiment (2026-10-18)
+
+The native trial/lock/BPM group has moved 180 logical pixels down, below the
+four receptors. BPM is at y=248, the player-side cue at y=208, judgment at
+y=340 and combo at y=380 (480-high logical screen). The normal judgment/combo
+gap is retained. Gift-note cards keep their existing positions.
+`stream_hud_layout.py <runtime-root>` applies the matching theme anchors.
+The OBS information source's `bpmBottom` anchor must receive the same shift
+scaled by the current game source's vertical scale; capture transforms remain
+unchanged. Trial panels stay above BPM, within the space below the receptors.
+
+`start-test.cmd` no longer sends note additions by default. It continues hearts,
+rescue points, strong trials and locks. `start-test.cmd --with-notes` restores
+note additions explicitly; the real note-gift API and inventory are unchanged.
+
 `bridge-state.json` persists paid receipt IDs and pending commands.
 `trial-state.json` persists partial contributions, reserved strong trials,
 banked points and calibration. The API collector checkpoints through the
@@ -155,7 +170,7 @@ heart receipts retain the last 128 entries. Back up state before resetting it.
 
 Start through the existing `start-game.cmd`. Restart the API and game after
 upgrading. `Save/GiftAPI/config.json` contains editable test values.
-`start-test.cmd` now sends notes every 3–6 seconds, rescue gifts every 3–10,
+`start-test.cmd` sends rescue gifts every 3–10 seconds (optional notes every 3–6),
 hearts every second, strong gifts every 35–55 and locks every 55–85. It posts
 100 TikTok viewers before the next song; override with `--tiktok-viewers` and
 `--youtube-viewers`. It no longer sends old ±BPM effects.
