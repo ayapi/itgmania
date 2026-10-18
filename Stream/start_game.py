@@ -3,8 +3,10 @@ from pathlib import Path
 from ctypes import wintypes
 import argparse
 import ctypes
+import hashlib
 import json
 import os
+import re
 import subprocess
 import time
 
@@ -25,6 +27,74 @@ kernel.CloseHandle.argtypes = [wintypes.HANDLE]
 kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
 kernel.QueryFullProcessImageNameW.argtypes = [wintypes.HANDLE, wintypes.DWORD,
                                            wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
+kernel.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
+kernel.CreateMutexW.restype = wintypes.HANDLE
+
+
+class ProcessEntry(ctypes.Structure):
+    _fields_ = [('size',wintypes.DWORD),('usage',wintypes.DWORD),
+                ('pid',wintypes.DWORD),('heap',ctypes.c_size_t),
+                ('module',wintypes.DWORD),('threads',wintypes.DWORD),
+                ('parent',wintypes.DWORD),('priority',wintypes.LONG),
+                ('flags',wintypes.DWORD),('exe',wintypes.WCHAR*260)]
+
+
+kernel.CreateToolhelp32Snapshot.argtypes=[wintypes.DWORD,wintypes.DWORD]
+kernel.CreateToolhelp32Snapshot.restype=wintypes.HANDLE
+kernel.Process32FirstW.argtypes=[wintypes.HANDLE,ctypes.POINTER(ProcessEntry)]
+kernel.Process32NextW.argtypes=[wintypes.HANDLE,ctypes.POINTER(ProcessEntry)]
+
+
+def running_game(root):
+    """Match the exact portable executable, including before its window opens."""
+    target=(root/'Program/ITGmania.exe').resolve()
+    snapshot=kernel.CreateToolhelp32Snapshot(2,0)
+    if snapshot==ctypes.c_void_p(-1).value:raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        entry=ProcessEntry();entry.size=ctypes.sizeof(entry)
+        more=kernel.Process32FirstW(snapshot,ctypes.byref(entry))
+        while more:
+            if entry.exe.lower()=='itgmania.exe':
+                handle=kernel.OpenProcess(0x1000,False,entry.pid)
+                if handle:
+                    try:
+                        name=ctypes.create_unicode_buffer(32768);length=wintypes.DWORD(len(name))
+                        if kernel.QueryFullProcessImageNameW(handle,0,name,ctypes.byref(length)) and Path(name.value).resolve()==target:
+                            return entry.pid
+                    finally:kernel.CloseHandle(handle)
+            more=kernel.Process32NextW(snapshot,ctypes.byref(entry))
+    finally:kernel.CloseHandle(snapshot)
+    return None
+
+
+def single_instance_preference(root):
+    path=root/'Save/Preferences.ini'
+    text=path.read_text(encoding='utf-8-sig')
+    updated=re.sub(r'(?m)^AllowMultipleInstances=.*$', 'AllowMultipleInstances=0',text)
+    if updated==text and not re.search(r'(?m)^AllowMultipleInstances=',text):
+        updated=re.sub(r'(?m)^\[Options\]\s*$', '[Options]\nAllowMultipleInstances=0',text,count=1)
+        if updated==text:
+            raise ValueError('Game preferences are missing the Options section')
+    if updated!=text:
+        path.write_text(updated,encoding='utf-8')
+
+
+def launch_or_reuse(root):
+    key=hashlib.sha256(str(root.resolve()).casefold().encode()).hexdigest()[:24]
+    guard=kernel.CreateMutexW(None,False,'Local\\ITGmaniaLaunch_'+key)
+    existed=ctypes.get_last_error()==183
+    if not guard:raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        pid=running_game(root)
+        if pid:return pid
+        if existed:return None  # Another click is already starting this game.
+        single_instance_preference(root)
+        process=subprocess.Popen([str(root/'Program/ITGmania.exe')],cwd=root)
+        until=time.monotonic()+30
+        while process.poll() is None and not find_window(process.pid) and time.monotonic()<until:
+            time.sleep(0.1)
+        return process.pid if process.poll() is None else None
+    finally:kernel.CloseHandle(guard)
 
 
 class MonitorInfo(ctypes.Structure):
@@ -137,5 +207,9 @@ if __name__ == '__main__':
     root = args.root.resolve()
     pid = args.pid
     if pid is None:
-        pid = subprocess.Popen([str(root / 'Program/ITGmania.exe')], cwd=root).pid
-    watch(root, pid, restore_saved=args.pid is None)
+        # Repeated shortcut clicks must not create another position tracker either.
+        if running_game(root):
+            raise SystemExit(0)
+        pid = launch_or_reuse(root)
+    if pid is not None:
+        watch(root, pid, restore_saved=args.pid is None)

@@ -187,6 +187,10 @@ heart receipts retain the last 128 entries. Back up state before resetting it.
 
 Start through the existing `start-game.cmd`. Restart the API and game after
 upgrading. `Save/GiftAPI/config.json` contains editable test values.
+The launcher reuses an existing process from this exact portable installation
+and guards simultaneous launch clicks. `AllowMultipleInstances=0` also prevents
+direct duplicate launches. Multiple production games would otherwise compete
+for the same OBS capture and status file, including evaluation heartbeats.
 `start-test.cmd` sends rescue gifts every 3–10 seconds (optional notes every 3–6),
 hearts every second, strong gifts every 35–55 and locks every 55–85. It posts
 100 TikTok viewers before the next song; override with `--tiktok-viewers` and
