@@ -27,6 +27,11 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   in the final measure (4 → 3 → 2 → 1 for 4/4). The game plays a short original
   notice chime and beat ticks; sounds play once, not in both browser sources.
   Speed and orange light begin only when the trial actually starts.
+- Trial entry ramps the actual audio/chart rate over the first musical beat
+  from the announced start boundary, using smoothstep easing. Both automatic
+  and strong trials use it. Rule points and target offset activate immediately;
+  BPM text and published effective BPM follow the applied rate. Rescue and
+  locks retain their existing timing; ending a trial cancels any pending ramp.
 - The native cue's outlined font is drawn once into an undisplayed 256×64
   texture during screen setup, before music starts. This warms the first
   rendering path without a visible flash or a playing/silent sound workaround.
@@ -41,9 +46,11 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   `CHALLENGE CLEAR!` without a sender, for **two beats** (the user's shorter
   override of the document's one–two measure suggestion), with a short chime.
   The result counter updates immediately; the lock's own badge keeps its name.
-- The player's native cue uses the native music beat. The stream's browser cue
-  uses the same published beat and interpolates between polls; no timer in
-  wall-clock seconds drives the countdown or clear duration. Strong names have
+- Both columns draw the native challenge cue and rescue meter from the same
+  game state and musical beat, including warning, clear, sender, remaining
+  points and blocked-heart status. No polling delay drives meter updates.
+  `native_trial_panel=true` suppresses the browser's duplicate central panel;
+  older games without this flag retain the browser fallback. Strong names have
   fixed size and ellipsis. Warnings pending at exit retain paid reservations.
 - 20 taps/reactions = 1pt. TikTok uses cumulative deltas and resets its baseline
   on trial start, after the blocked period, decreased totals, stream-ID changes,
@@ -60,7 +67,7 @@ fixed gift-name bubbles remain. No executable replacement is needed.
 - Notes retain the existing eighth-note plan, hold occupancy, two-foot limit,
   no consecutive added jumps and visible-field lead. Sold-out notes are rejected.
 - Fail is Off and the gameplay life display is hidden in streamer mode.
-  Combo remains; the browser shows a single rescue gauge and trial results.
+  Combo remains; the game shows the rescue gauge and the browser trial results.
 
 Short songs without an eligible auto-trial interval report
 `auto_trial_unavailable`. Auto trials cannot interrupt active paid effects.
@@ -105,9 +112,9 @@ coin/jewel costs. No payment or platform action is performed by this addon.
 
 Keep the existing browser source URL `/overlay`, 1080×1920 dimensions and game
 capture transforms. Song information and NOTE ATTACK stay left; rank,
-RESCUE/TRIAL/LOCK counts, gauge and brief rescue sender feed appear right.
-Strong-trial status, enlarged contributors and the rescue gauge occupy the
-center above native BPM; side menus only show gift/count information. anonymous hearts show no names.
+RESCUE/TRIAL/LOCK counts and brief rescue sender feed appear right.
+The native strong-trial status, contributors and rescue gauge occupy the
+center below BPM; side menus only show gift/count information. Anonymous hearts show no names.
 The final line reports resolved trials / total trials.
 
 Native BPM keeps its beat pulse and proportional font; the lock keeps its
@@ -164,16 +171,16 @@ counts, visibility rules, miss-streak suppression or layout.
 
 The order is combo → judgment → four receptors → BPM → trial/lock. Combo
 is at y=36, judgment at y=68, receptors at y=115, BPM at y=164, lock at
-y=195 and the player-side cue at y=220 (480-high logical screen). The browser
-trial panel grows downward from below BPM. The original theme's automatic
+y=195 and both challenge cues at y=220 (480-high logical screen). The native
+meter is at y=238, remaining points at y=251. The original theme's automatic
 combo-below-judgment adjustment is overridden only in normal streaming mode.
 Gift-note cards keep their existing positions.
 Feedback near the top fade is redrawn after the note alpha mask, in both
 player and stream columns, so the top combo remains opaque.
 `stream_hud_layout.py <runtime-root>` applies the matching theme anchors.
-The OBS information source's `bpmBottom` anchor must receive the same shift
-scaled by the current game source's vertical scale; capture transforms remain
-unchanged. Trial panels stay below BPM, within the space below the receptors.
+The OBS information source's `bpmBottom` anchor is only used by the legacy
+browser challenge fallback. Native trial panels share the capture transform
+with the arrows and BPM, within the space below the receptors.
 
 `start-test.cmd` no longer sends note additions by default. It continues hearts,
 rescue points, strong trials and locks. `start-test.cmd --with-notes` restores

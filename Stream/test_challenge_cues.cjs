@@ -12,4 +12,11 @@ for(const b of [80,81,81.9]){const cue=ctx.challengePresentation(st,b);assert.eq
 assert.equal(ctx.challengePresentation(st,82).mode,'announcing');
 assert.equal(ctx.challengePresentation({},100),null);
 assert.equal(ctx.challengePresentation({trial:{kind:'normal',rise:10,hearts_enabled:true}},100).mode,'active');
+const panel={hidden:false};ctx.document={getElementById:()=>panel};ctx.performance={now:()=>1000};
+vm.runInContext(html.slice(html.indexOf('let cueClock'),html.indexOf('function drawChallenge')),ctx);
+vm.runInContext('syncChallenge({protocol_version:5,ready:true,effective_bpm:150,song_beat:80},0)',ctx);
+assert(vm.runInContext('cueClock!==null',ctx),'Legacy games retain browser challenge display');
+vm.runInContext('syncChallenge({native_trial_panel:true},0)',ctx);
+assert.equal(vm.runInContext('cueClock',ctx),null);
+assert.equal(panel.hidden,true,'Native challenge HUD must suppress the duplicate browser panel');
 console.log('PASS: measure countdown, locally interpolated beat numbers, two-beat clear, no clear sender, return to next notice');

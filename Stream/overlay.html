@@ -129,6 +129,7 @@ function challengePresentation(st,beat){
 }
 let cueClock=null;
 function syncChallenge(status,networkSeconds){
+ if(status.native_trial_panel){cueClock=null;document.getElementById('trial-panel').hidden=true;return;}
  if(status.protocol_version!==5||!status.ready||status.connected===false){cueClock=null;return;}
  const bpm=Number(status.effective_bpm),beat=Number(status.song_beat);
  if(!Number.isFinite(bpm)||bpm<=0||!Number.isFinite(beat)){cueClock=null;return;}
@@ -163,7 +164,7 @@ function render(status,networkSeconds=0){
  document.getElementById('trial-stock').textContent='CHALLENGE '+(st.trial_units||0)+'/'+required+'個'+(st.trial_reserved?' / 予約'+st.trial_reserved+'回':'');
  const lock=document.getElementById('lock-stock');lock.textContent=st.lock_remaining?'LOCK '+(st.lock_units||0)+'/'+required+'個・残り'+st.lock_remaining+'回':'LOCK SOLD OUT'+(st.lock_units?' / 持越し'+st.lock_units+'個':'');
  const t=st.trial;
- drawChallenge(st,status.song_beat);
+ if(!status.native_trial_panel)drawChallenge(st,status.song_beat);
  document.getElementById('next-trial').textContent=status.bpm_lock&&st.next_trial_sender?'NEXT: '+st.next_trial_sender+'のCHALLENGE':'';
  document.getElementById('bank-status').textContent=st.rescue_bank?'救済持越し '+number(st.rescue_bank)+'pt':'';
  document.getElementById('progress').style.width=t?Math.min(100,100*t.points/t.required_points)+'%':'0%';

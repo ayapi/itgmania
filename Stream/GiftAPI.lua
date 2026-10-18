@@ -75,6 +75,7 @@ local roundedBubbleVertices,goldBadgeVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
+local trialRateRamp
 local resultById={}
 local lastReadyFrame
 local lastMetricFrame
@@ -176,7 +177,8 @@ local function snapshot(ready, message)
   song_artist=song and song:GetDisplayArtist() or "",
   active_tempo_effects=tempoEffects,
   tempo_feed=rules and rules.feed or {},bpm_offset=rules and rules.offset or 0,
-  native_tempo_notice=true,tempo_notice=tempoNotices,
+  native_tempo_notice=true,tempo_notice=tempoNotices,native_trial_panel=true,
+  trial_rate_ramp=trialRateRamp and {start_beat=trialRateRamp.beat,end_beat=trialRateRamp.beat+1,from_rate=trialRateRamp.from} or nil,
   native_name_font=nameFont,native_name_font_mapping="unicode_range_v2",
   note_feed=noteFeed,
   pending_bpm_delta=rules and rules.pendingDelta or 0,
@@ -217,6 +219,7 @@ local function applyRate(rate)
  effectiveRate=rate
 end
 local function resetRate()
+ trialRateRamp=nil
  if initialized then
   songOptions("ModsLevel_Song"):MusicRate(baseline)
   songOptions("ModsLevel_Current"):MusicRate(baseline)
@@ -344,9 +347,14 @@ local function updateTempo(now)
  local beat=GAMESTATE:GetSongPosition():GetSongBeat()
  local beforeBpm=currentBpm*effectiveRate
  currentBpm=master.timing:GetBPMAtBeat(beat)
+ local previousTrial=rules.trial
+ local announcement=rules.announcement
  rules:step(beat,now)
+ if rules.trial and rules.trial~=previousTrial then
+  -- Start on the announced measure boundary, not on a later API poll.
+  trialRateRamp={beat=announcement and announcement.startBeat or beat,from=effectiveRate}
+ elseif not rules.trial then trialRateRamp=nil end
  if not trialDisqualified and rules.metrics.trials>0 then modified() trialDisqualified=true end
- SL.StreamTrial=rules.trial and {bpm=rules:bpm(currentBpm),beat=beat} or nil
  measured("max_carry_ms",persistCarry)
  for id,event in pairs(rules.changes) do
   local r=resultById[id] or result({event_id=id},event.state) if r then r.state=event.state r.reason=event.reason r.lock_event_id=event.lock_event_id end
@@ -355,8 +363,16 @@ local function updateTempo(now)
  if currentBpm>0 then
   local limit=rules:limit(currentBpm)
   local bpm=math.max(currentBpm-limit,math.min(currentBpm+limit,rules:bpm(currentBpm)))
-  totalDelta=bpm-currentBpm
-  applyRate(bpm/currentBpm)
+  local rate=bpm/currentBpm
+  if trialRateRamp then
+   local phase=math.max(0,math.min(1,beat-trialRateRamp.beat))
+   local smooth=phase*phase*(3-2*phase)
+   rate=trialRateRamp.from+(rate-trialRateRamp.from)*smooth
+   if phase>=1 then trialRateRamp=nil end
+  end
+  applyRate(rate)
+  totalDelta=currentBpm*effectiveRate-currentBpm
+  SL.StreamTrial=rules.trial and {bpm=currentBpm*effectiveRate,beat=beat} or nil
   if math.abs(bpm-beforeBpm)>0.01 then
    for _,command in ipairs(rules.appliedThisStep) do
     local last=tempoNotices[#tempoNotices]
@@ -777,7 +793,8 @@ local af=Def.ActorFrame{
   end
   if bpmActor and bpmActor:GetVisible() then bpmActor:Draw() end
   if lockActor and lockActor:GetVisible() then lockActor:Draw() end
-  -- V5: only the browser rescue gauge is shown.
+  local challenge=self:GetChild('StreamChallengeCue')
+  if challenge then challenge:Draw() end
   for _,actor in ipairs(noticeActors) do if actor:GetVisible() then actor:Draw() end end
  end,
  OnCommand=function(self)
