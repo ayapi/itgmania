@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "websocket_url": "ws://127.0.0.1:11180/sub?p=connected,comments,meta,reactions,services",
+  "api_url": "http://127.0.0.1:8765",
+  "reconnect_seconds": 2
+}

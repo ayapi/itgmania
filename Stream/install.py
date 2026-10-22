@@ -108,6 +108,7 @@ end
     (root/'start-game.cmd').write_bytes(
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_api_background.py\r\n'
+        b'python Stream\\start_onecomme_background.py\r\n'
         b'python Stream\\start_obs_background.py\r\n'
         b'python Stream\\start_game_background.py\r\n')
     print('Installed streaming/gifts into '+str(root))

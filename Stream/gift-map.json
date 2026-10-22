@@ -1,4 +1,12 @@
 {
-  "tiktok": {},
-  "youtube": {}
+  "tiktok": {
+    "17646": {"kind": "trial", "units_per_gift": 1},
+    "5655": {"kind": "lock", "units_per_gift": 1},
+    "TEMP_TIKTOK_RESCUE": {"kind": "rescue", "points_per_unit": 1}
+  },
+  "youtube": {
+    "bow.png": {"kind": "trial", "units_per_gift": 1},
+    "heart.png": {"kind": "lock", "units_per_gift": 1},
+    "sparkles_v2_320x320.png": {"kind": "rescue", "points_per_unit": 1}
+  }
 }
