@@ -8,6 +8,7 @@ from trial_theme import install as trial_theme
 from stream_results import install as stream_results
 from stream_hud_layout import install as stream_hud_layout
 from challenge_design import install as challenge_design
+from safe_shield_design import install as safe_shield_design
 
 def install(root):
     root = root.resolve()
@@ -21,6 +22,7 @@ def install(root):
                  'StreamArrowFade.lua', 'StreamEdgeFade.lua', 'StreamMirror.lua'):
         shutil.copy2(source/name, overlay/name)
     challenge_design(root)
+    safe_shield_design(root)
     path = overlay/'default.lua'
     text = path.read_text(encoding='utf-8-sig')
     hook = 'af[#af+1] = LoadActor("./GiftAPI.lua") -- SimplyLoveGiftAPI'

@@ -6,6 +6,8 @@ The Version 3 tempo/decay/life description below is historical; `/api/tempo`
 has been retired. Existing capture, input, font and note-layout setup remains.
 OneComme WebSocket input is available; see [ONECOMME.md](ONECOMME.md) for startup,
 provisional gift assignments, free reactions and reconnect behavior.
+The lock's visible name/design is [SAFE SHIELD](SAFE-SHIELD-DESIGN.md); existing
+lock API routes and gift assignments remain compatible.
 
 This fork adds native RGBA output on Windows and real, judged gift taps to
 ITGmania. The upstream ITGmania and Simply Love licenses apply; this addon is

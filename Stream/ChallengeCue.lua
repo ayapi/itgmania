@@ -115,7 +115,7 @@ local af=Def.ActorFrame{
    phase:visible(p.mode=='meter')
    if p.mode=='meter' then
     local t=p.source
-    phase:settext(not t.hearts_enabled and 'ハート無効中 / 救済ギフト・ロックは有効' or
+    phase:settext(not t.hearts_enabled and 'ハート無効中 / 救済ギフト・SAFE SHIELDは有効' or
      (t.heart_pending>0 and ('ハート反映待ち '..number(t.heart_pending)..'pt') or ''))
    end
   end)
@@ -157,7 +157,7 @@ af[#af+1]=meter
 if SupportsRenderToTexture() then
  local warm=Def.ActorFrameTexture{Name='FontWarmup',InitCommand=function(self) self:SetWidth(256):SetHeight(64):EnableAlphaBuffer(true):Create():visible(false) end}
  for _,f in ipairs({font,counterFont,deltaFont}) do
-  warm[#warm+1]=LoadFont(f)..{Text=f==font and '0123456789 + / 開始まで小節 ハート反映待ち無効中 救済ギフト・ロックは有効 テスト視聴者' or '0123456789 + / .',InitCommand=function(self) self:xy(128,32):zoom(0.7):strokecolor(0,0,0,1):shadowlength(0) end}
+  warm[#warm+1]=LoadFont(f)..{Text=f==font and '0123456789 + / 開始まで小節 ハート反映待ち無効中 救済ギフト・SAFE SHIELDは有効 テスト視聴者' or '0123456789 + / .',InitCommand=function(self) self:xy(128,32):zoom(0.7):strokecolor(0,0,0,1):shadowlength(0) end}
  end
  -- Preload normal-alpha PNG draw paths too, without an onscreen flash.
  warm[#warm+1]=Def.Sprite{Texture=assets..'titles/attack_full.png',InitCommand=function(self) self:xy(128,32):zoomto(205,23) end}

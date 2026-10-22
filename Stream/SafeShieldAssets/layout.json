@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "reference": {
+    "size": [
+      1080,
+      1920
+    ],
+    "orientation": "portrait",
+    "coordinate_origin": "top-left",
+    "source_image": "reference.jpg",
+    "source_image_size": [
+      768,
+      1369
+    ],
+    "measurement": "Approximate placement measured from safe-shield-layout.jpg, mapped to 1080x1920",
+    "viewport_transform": "s=min(viewportWidth/1080,viewportHeight/1920); offset=[(viewportWidth-1080*s)/2,(viewportHeight-1920*s)/2]; screenXY=offset+referenceXY*s",
+    "scale_rule": "Uniform scaling; keep the reference canvas centred and preserve image aspect ratios",
+    "context_only": {
+      "bpm_center": [
+        565,
+        925
+      ],
+      "note_receptor_region_xywh": [
+        155,
+        670,
+        800,
+        195
+      ],
+      "note": "Existing BPM and receptors are context only; do not render duplicates"
+    }
+  },
+  "assets": {
+    "title": {
+      "file": "assets/title.png",
+      "source_size": [
+        332,
+        89
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        316,
+        73
+      ],
+      "pivot_source_px": [
+        166.0,
+        44.5
+      ],
+      "center": [
+        550,
+        994
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5177083333333333
+      ],
+      "render_size": [
+        464.8,
+        124.6
+      ],
+      "render_top_left": [
+        317.6,
+        931.7
+      ],
+      "z": 30
+    },
+    "shield_left": {
+      "file": "assets/shield.png",
+      "source_size": [
+        185,
+        194
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        169,
+        178
+      ],
+      "pivot_source_px": [
+        92.5,
+        97.0
+      ],
+      "center": [
+        190,
+        965
+      ],
+      "normalized_center": [
+        0.17592592592592593,
+        0.5026041666666666
+      ],
+      "render_size": [
+        216.9753,
+        227.5309
+      ],
+      "render_top_left": [
+        81.5123,
+        851.2346
+      ],
+      "z": 20
+    },
+    "shield_right": {
+      "file": "assets/shield.png",
+      "source_size": [
+        185,
+        194
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        169,
+        178
+      ],
+      "pivot_source_px": [
+        92.5,
+        97.0
+      ],
+      "center": [
+        915,
+        965
+      ],
+      "normalized_center": [
+        0.8472222222222222,
+        0.5026041666666666
+      ],
+      "render_size": [
+        216.9753,
+        227.5309
+      ],
+      "render_top_left": [
+        806.5123,
+        851.2346
+      ],
+      "z": 20
+    }
+  },
+  "text": {
+    "center": [
+      560,
+      1060
+    ],
+    "z": 40,
+    "font_stack": [
+      "Yu Gothic",
+      "Noto Sans JP",
+      "sans-serif"
+    ],
+    "font_size": 32,
+    "weight": 700,
+    "line_height": 44,
+    "color": "#00fff1",
+    "alignment": "Centre the name-and-time group as a whole at [560,1060]; both runs share a baseline",
+    "viewer_name": {
+      "binding": "viewer_name",
+      "example": "テスト視聴者",
+      "max_width": 320,
+      "overflow": "Single line; ellipsis; do not wrap or shrink the time",
+      "input": "Literal text, not markup; replace line breaks with spaces"
+    },
+    "gap": 10,
+    "time": {
+      "binding": "remaining_seconds",
+      "example": 10,
+      "suffix": "s",
+      "reserved_width": 80,
+      "alignment": "left",
+      "font_variant_numeric": "tabular-nums",
+      "display": "ceil(max(remaining_seconds,0)) + \"s\"",
+      "reserved_width_note": "80px accommodates the intended 0..999s display; increase for longer effects"
+    },
+    "maximum_group_width": 410,
+    "example_visual": "テスト視聴者 10s"
+  },
+  "runtime": {
+    "inputs": {
+      "active": "boolean",
+      "viewer_name": "string",
+      "remaining_seconds": "finite number"
+    },
+    "visible_rule": "active && isFinite(remaining_seconds) && remaining_seconds > 0",
+    "expiry": "Hide the whole shield group when remaining_seconds <= 0; do not leave 0s on screen",
+    "clock": "Read remaining seconds from the game effect state. The UI must not decrement an independent timer",
+    "pause": "Follow the game effect timer and its pause policy",
+    "empty_name": "Show the time alone, centred, without an empty name gap"
+  },
+  "rendering": {
+    "alpha": "straight",
+    "blend": "normal alpha blending",
+    "extra_image_glow": false,
+    "preparation": "PhotoCraft MCP Color to Alpha (#000000, transparencyThreshold=0.065); negligible alpha noise removed; 16px transparent padding",
+    "title": "Original SAFE SHIELD lettering is an image; no substitute title font",
+    "right_shield": "Reuse the same shield texture without mirroring, as in the reference",
+    "layer_order": [
+      "shield_left",
+      "shield_right",
+      "title",
+      "viewer name and seconds"
+    ]
+  },
+  "sharing": {
+    "required": "Share this safe-shield-layout folder with all contents; no parent parts images are required",
+    "optional": "reference.jpg and preview JPGs are review aids; the game uses layout.json and assets/*.png"
+  }
+}

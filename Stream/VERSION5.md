@@ -124,8 +124,12 @@ The native strong-trial status, contributors and rescue gauge occupy the
 center below BPM; side menus only show gift/count information. Anonymous hearts show no names.
 The final line reports resolved trials / total trials.
 
-Native BPM keeps its beat pulse and proportional font; the lock keeps its
-fixed-size Noto name, ellipsis, gold badge and seconds. A separate browser source
+Native BPM keeps its beat pulse and proportional font. The lock's display name
+is **SAFE SHIELD**: the supplied cyan title/shield PNGs surround BPM, with a
+fixed-size Noto name and remaining seconds below. Names use ellipsis at the
+supplied width; time is rounded up and the whole group hides at expiry.
+The internal `/api/lock`, `bpm_lock` and gift-map `kind=lock` remain compatible.
+A separate browser source
 `ITGmania 試練ライト` uses `/overlay?mode=light` and OBS `OBS_BLEND_SCREEN`.
 Run `python configure_trial_light.py` while OBS and its WebSocket are running
 to create/update it in the current scene, sized to the canvas and placed above
@@ -177,8 +181,8 @@ counts, visibility rules, miss-streak suppression or layout.
 ### Trial layout experiment (2026-10-18)
 
 The order is combo → judgment → four receptors → BPM → trial/lock. Combo
-is at y=36, judgment at y=68, receptors at y=115, BPM at y=164, lock at
-y=195. The supplied portrait challenge design uses a uniform 0.32 scale:
+is at y=36, judgment at y=68, receptors at y=115, BPM at y=164, and legacy
+tempo notices at y=195. The supplied portrait challenge design uses a uniform 0.32 scale:
 its panel/meter anchor is y=208.8 and title is y=186.08 (480-high logical
 screen). Countdown PNGs keep their individual source pivots and proportions;
 the large number deliberately overlaps the title/BPM like the reference.
@@ -194,6 +198,13 @@ player and stream columns, so the top combo remains opaque.
 The OBS information source's `bpmBottom` anchor is only used by the legacy
 browser challenge fallback. Native trial panels share the capture transform
 with the arrows and BPM, within the space below the receptors.
+
+SAFE SHIELD uses that same uniform scale and anchor: the title is y=186.08,
+shields y=176.8, name/time y=207.2. Both shields use the same unflipped PNG.
+Names keep at most 320 portrait pixels, a 10px gap and 80px reserved timer
+width, scaled uniformly. Empty names center the timer alone. The timer reads
+the existing effect's remaining musical time; no independent countdown runs.
+The two-beat challenge-clear cue still takes visual priority at activation.
 
 `start-test.cmd` no longer sends note additions by default. It continues hearts,
 rescue points, strong trials and locks. `start-test.cmd --with-notes` restores

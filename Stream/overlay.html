@@ -47,7 +47,7 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
 <main id="panel" hidden>
  <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
  <section class="menu note-menu"><h2>NOTE ATTACK</h2><div class="receipt" id="receipt">100円相当 / 1ノート</div><div class="stock" id="note-stock"></div><div class="rules" id="rules"></div></section>
- <section class="menu tempo-menu"><h2>RESCUE / CHALLENGE / LOCK</h2>
+ <section class="menu tempo-menu"><h2>RESCUE / CHALLENGE / SAFE SHIELD</h2>
   <div id="rank"></div><div class="price">ハート20回＝1pt / 1コイン・ジュエル＝1pt</div>
   <div id="trial-stock"></div><div id="lock-stock"></div>
   <div id="next-trial"></div>
@@ -162,7 +162,7 @@ function render(status,networkSeconds=0){
  document.getElementById('rank').textContent='ランク '+(st.rank||1)+' / 同接 '+(st.viewers||0)+'人';
  const required=st.required_units||1;
  document.getElementById('trial-stock').textContent='CHALLENGE '+(st.trial_units||0)+'/'+required+'個'+(st.trial_reserved?' / 予約'+st.trial_reserved+'回':'');
- const lock=document.getElementById('lock-stock');lock.textContent=st.lock_remaining?'LOCK '+(st.lock_units||0)+'/'+required+'個・残り'+st.lock_remaining+'回':'LOCK SOLD OUT'+(st.lock_units?' / 持越し'+st.lock_units+'個':'');
+ const lock=document.getElementById('lock-stock');lock.textContent=st.lock_remaining?'SAFE SHIELD '+(st.lock_units||0)+'/'+required+'個・残り'+st.lock_remaining+'回':'SAFE SHIELD SOLD OUT'+(st.lock_units?' / 持越し'+st.lock_units+'個':'');
  const t=st.trial;
  if(!status.native_trial_panel)drawChallenge(st,status.song_beat);
  document.getElementById('next-trial').textContent=status.bpm_lock&&st.next_trial_sender?'NEXT: '+st.next_trial_sender+'のCHALLENGE':'';

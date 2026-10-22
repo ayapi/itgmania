@@ -71,7 +71,7 @@ local nativeCarry
 local inventoryTotal=0
 local trialDisqualified=false
 local nextLabelOrder=0
-local roundedBubbleVertices,goldBadgeVertices
+local roundedBubbleVertices
 local song, baseline, originalHaste, lastRate, lastPoll, lastStatus
 local reason, stopped, initialized="Starting gameplay",false,false
 local currentBpm, totalDelta, effectiveRate=0,0,1
@@ -857,29 +857,9 @@ local af=Def.ActorFrame{
       if lockActor then
        local lock=rules.lock
        local clearing=rules.resolution and rules.resolution.resolved and beat<rules.resolution.end_beat
-       lockActor:xy(master.actor:GetX(),195+#tempoNotices*13):visible(lock~=nil and ready and not clearing)
-       if lock then
-        local remaining=math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate)
-        local secondsText=string.format("%.1fs",remaining)
-        if lock.displaySeconds~=secondsText then
-         lock.displaySeconds=secondsText
-         local sender=lockActor:GetChild("Sender") local timer=lockActor:GetChild("Time")
-         timer:settext(secondsText)
-         local timeWidth=timer:GetZoomedWidth()
-         sender:settext(singleLineName(lock.sender,sender,math.min(100,160-22-timeWidth),0.7))
-         local nameWidth=sender:GetZoomedWidth()
-         local width=22+nameWidth+timeWidth
-         sender:x(-width/2+15) timer:x(-width/2+19+nameWidth)
-         lockActor:GetChild("Icon"):x(-width/2+7)
-         if lock.badgeWidth~=width then
-          lock.badgeWidth=width
-          local border=roundedBubbleVertices(width,18,3)
-          lockActor:GetChild("Border"):SetNumVertices(#border):SetVertices(border)
-          local background=goldBadgeVertices(width-2,16,2)
-          lockActor:GetChild("Background"):SetNumVertices(#background):SetVertices(background)
-         end
-        end
-       end
+       local remaining=lock and math.max(0,(master.timing:GetElapsedTimeFromBeat(lock.endBeat)-GAMESTATE:GetSongPosition():GetMusicSeconds())/effectiveRate) or 0
+       lockActor:playcommand('UpdateShield',{x=master.actor:GetX(),active=lock~=nil and ready and not clearing,
+        sender=lock and lock.sender or '',seconds=remaining})
       end
       for i,actor in ipairs(noticeActors) do
        local notice=tempoNotices[i]
@@ -961,31 +941,6 @@ roundedBubbleVertices=function(width,height,radius)
  vertices[#vertices+1]=vertices[2]
  return vertices
 end
-goldBadgeVertices=function(width,height,radius)
- -- Soft horizontal reflection and subtle brushed bands, rather than a hard
- -- yellow stripe. The rounded edges carry a darker metal bevel.
- local vertices={}
- local function edge(y)
-  local corner=math.max(0,math.abs(y)-(height/2-radius))
-  return width/2-radius+math.sqrt(math.max(0,radius*radius-corner*corner))
- end
- local function vertex(column,row)
-  local u,v=column/12,row/16
-  local y=(v-0.5)*height local x=(u*2-1)*edge(y)
-  local reflection=math.exp(-((u-0.5)/0.31)^2)
-  local bevel=(row==0 or row==16) and -0.09 or 0
-  local brush=(row%2==0 and 0.006 or -0.006)
-  local light=reflection*0.27+bevel+brush+(1-v)*0.025
-  return {{x,y,0},{0.56+light,0.49+light,0.31+light*0.85,1}}
- end
- for row=0,15 do
-  for col=0,11 do
-   local tl,tr,bl,br=vertex(col,row),vertex(col+1,row),vertex(col,row+1),vertex(col+1,row+1)
-   for _,v in ipairs({tl,bl,tr,tr,bl,br}) do vertices[#vertices+1]=v end
-  end
- end
- return vertices
-end
 local bpm=Def.ActorFrame{
  Name="StreamBPM",
  InitCommand=function(self) bpmActor=self self:visible(false) end,
@@ -998,8 +953,7 @@ for _,name in ipairs({"Base","Up","Down"}) do
  }
 end
 af[#af+1]=bpm
--- Player-side cues use the same native beat as speed changes. The stream-side
--- equivalent is rendered in the OBS information source, so do not mirror this.
+-- Both columns share native challenge timing and rendering.
 af[#af+1]=LoadActor('./ChallengeCue.lua',function()
  local master=byname[ToEnumShortString(GAMESTATE:GetMasterPlayerNumber())]
  if not rules or not master or not screen or stopped then return nil end
@@ -1007,29 +961,7 @@ af[#af+1]=LoadActor('./ChallengeCue.lua',function()
  local ready=beat>=0 and pos:GetMusicSeconds()<song:GetLastSecond() and not screen:IsPaused()
  return rules:status(beat),beat,master.actor:GetX(),ready
 end)
-af[#af+1]=Def.ActorFrame{
- Name="StreamLock",
- InitCommand=function(self) lockActor=self self:visible(false) end,
- Def.ActorMultiVertex{Name="Border",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Fan"}):diffuse(color("#806537")) end},
- Def.ActorMultiVertex{Name="Background",InitCommand=function(self) self:SetDrawState({Mode="DrawMode_Triangles"}) end},
- Def.ActorFrame{Name="Icon",
-  -- A native padlock pictogram avoids unsupported emoji fallback glyphs.
-  Def.Quad{InitCommand=function(self) self:xy(-2.5,-2):zoomto(2,6):diffuse(color("#34250e")) end},
-  Def.Quad{InitCommand=function(self) self:xy(2.5,-2):zoomto(2,6):diffuse(color("#34250e")) end},
-  Def.Quad{InitCommand=function(self) self:y(-5):zoomto(7,2):diffuse(color("#34250e")) end},
-  Def.ActorMultiVertex{InitCommand=function(self)
-   local v=roundedBubbleVertices(9,7,1.5)
-   self:y(2):SetDrawState({Mode="DrawMode_Fan"}):SetNumVertices(#v):SetVertices(v):diffuse(color("#34250e"))
-  end},
-  Def.ActorMultiVertex{InitCommand=function(self)
-   local v=goldBadgeVertices(7,5,1)
-   self:y(2):SetDrawState({Mode="DrawMode_Triangles"}):SetNumVertices(#v):SetVertices(v)
-  end},
-  Def.Quad{InitCommand=function(self) self:y(2):zoomto(1,2):diffuse(color("#efd992")) end},
- },
- LoadFont(nameFont)..{Name="Sender",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(color("#34250e")):strokecolor(0,0,0,0):shadowcolor(color("#ecd799")):shadowlength(0.5) end},
- LoadFont(nameFont)..{Name="Time",InitCommand=function(self) self:halign(0):zoom(0.7):diffuse(color("#34250e")):strokecolor(0,0,0,0):shadowcolor(color("#ecd799")):shadowlength(0.5) end},
-}
+af[#af+1]=LoadActor('./SafeShield.lua',function(actor) lockActor=actor end)
 
 for i=1,3 do
  local index=i

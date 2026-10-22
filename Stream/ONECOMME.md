@@ -20,9 +20,9 @@
 | サービス | ギフト | 設定キー | 効果 |
 | --- | --- | --- | --- |
 | TikTok | Tiny Diny Mic（受信例） | `17646` | 強い試練に1単位 |
-| TikTok | バラ / Rose（仮） | `5655` | ロックに1単位 |
+| TikTok | バラ / Rose（仮） | `5655` | SAFE SHIELDに1単位 |
 | YouTube | 一礼 | `bow.png` | 強い試練に1単位 |
-| YouTube | 有料ハート | `heart.png` | ロックに1単位 |
+| YouTube | 有料ハート | `heart.png` | SAFE SHIELDに1単位 |
 | YouTube | きらめきの画像ギフト（仮） | `sparkles_v2_320x320.png` | 救済1pt |
 
 TikTok救済用の `TEMP_TIKTOK_RESCUE` は差し替え用プレースホルダーです。
