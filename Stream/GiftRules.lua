@@ -93,7 +93,8 @@ function R:finishTrial(now,resolved,why)
  elseif duration<self.config.trial_fast_seconds then self.multiplier=clamp(self.multiplier*1.2,0.5,2) end
  if t.group then self:tokenEvents(t.group,'completed',resolved and 'Trial rescued' or 'Trial reached song end') end
  local beat=self.lastBeatUpdated
- self.resolution={resolved=resolved,at=now,beat=beat,end_beat=beat+clamp(self.config.trial_clear_beats or 2,1,2),reason=why}
+ self.resolution={resolved=resolved,at=now,beat=beat,end_beat=beat+clamp(self.config.trial_clear_beats or 2,1,2),reason=why,
+  required_points=t.required,points=t.progress,kind=t.kind,rise=t.rise}
  self.trial=nil self.offset=0
  self.restUntil=(math.floor(R.measure(self.lastBeatUpdated,self.signatures)/8)+2)*8
 end
@@ -223,6 +224,7 @@ function R:atBeat(beat,now)
   self.announcement=nil
   if a.kind=='normal' then self.autoDone=self.autoDone+1 end
   self:startTrial(a.kind,a.group,beat,now)
+  if self.trial then self.trial.startBeat=a.startBeat end
  end
  local notice=self:noticeMeasures()
  local total=R.measure(self.lastBeat,self.signatures)
@@ -276,6 +278,7 @@ function R:status(beat)
  local remaining=a and math.max(0,a.startMeasure-m) or 0
  local final=a and m>=a.startMeasure-1
  local forecast=a and {id=a.id,kind=a.kind,sender=a.sender,start_beat=a.startBeat,
+  rise=a.kind=='strong' and self:limit(self.baseAt(a.startBeat)) or math.min(self.config.trial_bpm_delta,self:limit(self.baseAt(a.startBeat))),
   final_measure_beat=R.beat(a.startMeasure-1,self.signatures),
   remaining_measures=math.ceil(remaining-0.000001),countdown=final and math.max(1,math.ceil(a.startBeat-beat-0.000001)) or nil} or nil
  if forecast then
@@ -284,7 +287,7 @@ function R:status(beat)
  end
  local resolution=self.resolution and self.resolution.resolved and beat<self.resolution.end_beat and self.resolution or nil
  return {rank=self.rank,viewers=self.viewers,required_units=self.requiredUnits,trial=t and {
-  kind=t.kind,sender=t.sender,rise=t.rise,required_points=t.required,points=t.progress,
+  kind=t.kind,sender=t.sender,rise=t.rise,start_beat=t.startBeat,required_points=t.required,points=t.progress,
   remaining_points=math.max(0,t.required-t.progress),heart_points=t.heartPoints,gift_points=t.giftPoints,
   heart_pending=t.heartPending,hearts_enabled=R.measure(beat,self.signatures)>=t.heartsAfter} or nil,
   announcement=forecast,next_trial_sender=self.strongQueue[1] and self.strongQueue[1].sender or nil,

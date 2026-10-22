@@ -1,0 +1,73 @@
+{
+  "method": "Original lettering extracted from PhotoCraft RGBA exports; no substitute font",
+  "assets": {
+    "attack": {
+      "file": "attack.png",
+      "size": [
+        1398,
+        184
+      ],
+      "source_xy": [
+        552,
+        520
+      ],
+      "visible_bounds": [
+        1,
+        3,
+        1397,
+        169
+      ]
+    },
+    "attack_delta_21": {
+      "file": "attack_delta_21.png",
+      "size": [
+        250,
+        184
+      ],
+      "source_xy": [
+        1950,
+        520
+      ],
+      "visible_bounds": [
+        2,
+        5,
+        249,
+        167
+      ]
+    },
+    "attack_full": {
+      "file": "attack_full.png",
+      "size": [
+        1648,
+        184
+      ],
+      "source_xy": [
+        552,
+        520
+      ],
+      "visible_bounds": [
+        1,
+        3,
+        1647,
+        169
+      ]
+    },
+    "cleared": {
+      "file": "cleared.png",
+      "size": [
+        1565,
+        184
+      ],
+      "source_xy": [
+        590,
+        520
+      ],
+      "visible_bounds": [
+        1,
+        3,
+        1564,
+        183
+      ]
+    }
+  }
+}

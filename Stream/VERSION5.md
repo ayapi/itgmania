@@ -23,9 +23,14 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   before their selected eight-measure start boundary (earliest measure 20).
   Fulfilled strong gifts warn on the next receiving beat, or after the intro,
   current trial or lock. No reserved attack skips the warning.
-- The warning counts measures 4 → 3 → 2, then shows one large number per beat
-  in the final measure (4 → 3 → 2 → 1 for 4/4). The game plays a short original
-  notice chime and beat ticks; sounds play once, not in both browser sources.
+- The supplied countdown layout shows a large 4 → 3 → 2 → 1 at the start of
+  each remaining measure, for one musical beat each. Between flashes the
+  illuminated panel says `開始までN小節`. The scheduled start shows `START!`
+  for one beat, then hands the display to the meter. Actual trial effects
+  activate on the scheduled beat, without waiting for the START visual.
+  Measure boundaries come from timing data, including non-4/4 measures.
+  The game plays a short original notice chime and a tick for each number;
+  sounds play once, not in both render columns or browser sources.
   Speed and orange light begin only when the trial actually starts.
 - All trial/rescue/clear/lock rate transitions change at a constant 10 BPM
   per musical beat in either direction: +10 takes 1 beat, +16 takes 1.6 beats,
@@ -45,7 +50,7 @@ fixed gift-name bubbles remain. No executable replacement is needed.
   bank behavior and apply to the next trial, preserving their paid value.
 - A lock during a warning reserves it again and restarts a full four-measure
   warning after the lock. Locking an active trial or filling its gauge shows
-  `CHALLENGE CLEAR!` without a sender, for **two beats** (the user's shorter
+  the cyan `CHALLENGE CLEARED!` title and full meter without a sender, for **two beats** (the user's shorter
   override of the document's one–two measure suggestion), with a short chime.
   The result counter updates immediately; the lock's own badge keeps its name.
 - Both columns draw the native challenge cue and rescue meter from the same
@@ -173,8 +178,14 @@ counts, visibility rules, miss-streak suppression or layout.
 
 The order is combo → judgment → four receptors → BPM → trial/lock. Combo
 is at y=36, judgment at y=68, receptors at y=115, BPM at y=164, lock at
-y=195 and both challenge cues at y=220 (480-high logical screen). The native
-meter is at y=238, remaining points at y=251. The original theme's automatic
+y=195. The supplied portrait challenge design uses a uniform 0.32 scale:
+its panel/meter anchor is y=208.8 and title is y=186.08 (480-high logical
+screen). Countdown PNGs keep their individual source pivots and proportions;
+the large number deliberately overlaps the title/BPM like the reference.
+The meter draws track → clipped fill → frame → cursor → current/required
+points. The 62 cells retain fixed widths; progress only changes the crop.
+Strong names appear below the meter with the existing Noto font/ellipsis,
+followed by blocked/pending-heart information. The original theme's automatic
 combo-below-judgment adjustment is overridden only in normal streaming mode.
 Gift-note cards keep their existing positions.
 Feedback near the top fade is redrawn after the note alpha mask, in both

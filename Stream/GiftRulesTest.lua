@@ -117,4 +117,5 @@ for b=0,7.5,.5 do
  assert(count<=2) checks=checks+1
  if next(row) then assert(not(count==2 and previousFeet==2)) checks=checks+1 previousFeet=count end
 end
+checks=checks+dofile(THEME:GetCurrentThemeDirectory()..'BGAnimations/ScreenGameplay overlay/ChallengePresentationTest.lua')
 return checks

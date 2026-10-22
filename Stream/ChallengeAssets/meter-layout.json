@@ -1,0 +1,199 @@
+{
+  "version": 2,
+  "meter_canvas": [
+    2048,
+    256
+  ],
+  "source_meter_origin": [
+    352,
+    688
+  ],
+  "coordinate_system": "top-left origin; pixels; rect = [x,y,width,height]",
+  "fill_rect": [
+    72,
+    80,
+    1908,
+    96
+  ],
+  "segments": 62,
+  "fill_rule": "clip fill.png horizontally to fill_rect.width * clamp(value/max,0,1); keep texture scale fixed",
+  "draw_order": [
+    "track.png",
+    "fill.png (clipped)",
+    "frame.png",
+    "shared/cursor.png",
+    "runtime text"
+  ],
+  "cursor": {
+    "file": "shared/cursor.png",
+    "size": [
+      256,
+      384
+    ],
+    "pivot": [
+      127,
+      195
+    ],
+    "position": "[72 + 1908 * ratio, 127]",
+    "hide_at_zero": true
+  },
+  "text": {
+    "font": "Rajdhani",
+    "title_weight": 700,
+    "counter_weight": 600,
+    "font_identification": "Rajdhani is retained for counters only. Fixed titles use original PNG lettering; no exact title font identified.",
+    "title_render_mode": "original_title_png",
+    "title_files": {
+      "attack": "titles/attack.png",
+      "attack_delta_21": "titles/attack_delta_21.png",
+      "attack_full": "titles/attack_full.png",
+      "cleared": "titles/cleared.png"
+    },
+    "variable_delta_font": "Oxanium",
+    "variable_delta_font_file": "fonts/Oxanium-Variable.ttf",
+    "variable_delta_note": "Approximation for variable numbers; default +21 can use the original delta PNG",
+    "url": "https://fonts.google.com/specimen/Rajdhani",
+    "title_source_top_left": [
+      575,
+      555
+    ],
+    "title_pixel_size_starting_point": 150,
+    "counter_rect_in_meter": [
+      1570,
+      84,
+      380,
+      92
+    ],
+    "counter_alignment": "right",
+    "counter_pixel_size_starting_point": 112,
+    "title_strings": {
+      "attack": "CHALLENGE ATTACK +21",
+      "cleared": "CHALLENGE CLEARED!"
+    },
+    "counter_rule": "render current / maximum from game state; no baked-in numbers in PNGs",
+    "colors": {
+      "attack": "#ff953e",
+      "cleared": "#67f4f0",
+      "counter": "#bbffff"
+    }
+  },
+  "reconstruction": [
+    "Black removed by PhotoCraft MCP Color to Alpha, threshold 0.065.",
+    "Original sampled segments repeated as 62 consistent cells; original irregular cell spacing is normalized.",
+    "Frame horizontal strips rebuilt from clean samples; cleared right cap borrowed from cyan attack frame.",
+    "Cursor rebuilt as an independent cyan-white line with a smooth capsule halo; the flattened source's frame and cells are excluded.",
+    "Decoration alpha limited to the bright icon's neighbourhood and faded to zero on every crop edge to remove rectangular remnants.",
+    "Titles and counters omitted; icons and chevrons extracted from the source images.",
+    "RGBA PNGs use straight alpha. Use normal alpha blending; additive blending is optional for cursor only."
+  ],
+  "skins": {
+    "attack": {
+      "source": "ChallengeGauge2.jpg",
+      "folder": "attack",
+      "decorations": {
+        "chevron_left": {
+          "file": "chevron_left.png",
+          "size": [
+            175,
+            197
+          ],
+          "source_xy": [
+            175,
+            716
+          ]
+        },
+        "chevron_right": {
+          "file": "chevron_right.png",
+          "size": [
+            189,
+            197
+          ],
+          "source_xy": [
+            2390,
+            717
+          ]
+        },
+        "badge_left": {
+          "file": "badge_left.png",
+          "size": [
+            165,
+            160
+          ],
+          "source_xy": [
+            385,
+            530
+          ]
+        },
+        "badge_right": {
+          "file": "badge_right.png",
+          "size": [
+            155,
+            160
+          ],
+          "source_xy": [
+            2205,
+            530
+          ]
+        }
+      },
+      "layer_size": [
+        2048,
+        256
+      ]
+    },
+    "cleared": {
+      "source": "ChallengeCleared2.jpg",
+      "folder": "cleared",
+      "decorations": {
+        "chevron_left": {
+          "file": "chevron_left.png",
+          "size": [
+            174,
+            196
+          ],
+          "source_xy": [
+            176,
+            717
+          ]
+        },
+        "chevron_right": {
+          "file": "chevron_right.png",
+          "size": [
+            189,
+            205
+          ],
+          "source_xy": [
+            2390,
+            713
+          ]
+        },
+        "badge_left": {
+          "file": "badge_left.png",
+          "size": [
+            180,
+            190
+          ],
+          "source_xy": [
+            385,
+            510
+          ]
+        },
+        "badge_right": {
+          "file": "badge_right.png",
+          "size": [
+            200,
+            190
+          ],
+          "source_xy": [
+            2160,
+            510
+          ]
+        }
+      },
+      "layer_size": [
+        2048,
+        256
+      ]
+    }
+  }
+}

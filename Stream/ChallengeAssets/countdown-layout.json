@@ -1,0 +1,407 @@
+{
+  "version": 2,
+  "reference": {
+    "size": [
+      1080,
+      1920
+    ],
+    "anchor": [
+      550,
+      1065
+    ],
+    "orientation": "portrait",
+    "coordinate_origin": "top-left",
+    "meaning": "Full 1080x1920 game viewport; positions measured approximately from itgmania-parts.jpg",
+    "source_image": "../../itgmania-parts.jpg",
+    "source_image_size": [
+      768,
+      1369
+    ],
+    "measurement": "Screenshot X multiplied by 1080/768 and Y by 1920/1369; round to practical HUD coordinates",
+    "mount": "Default anchor is [550,1065], slightly right of viewport centre to match the lane centre in the reference image",
+    "transform": "screenXY = gameAnchorXY + (referenceXY - [550,1065]) * uiScale",
+    "viewport_transform": "s=min(viewportWidth/1080,viewportHeight/1920); offset=[(viewportWidth-1080*s)/2,(viewportHeight-1920*s)/2]; screenXY=offset+referenceXY*s",
+    "scale_hint": "Use uniform scaling and centre the 1080x1920 canvas. At native resolution uiScale=1. Never scale X/Y independently",
+    "anchor_example": {
+      "game_anchor": [
+        550,
+        1065
+      ],
+      "ui_scale": 1
+    },
+    "context_only": {
+      "bpm_center": [
+        565,
+        925
+      ],
+      "bpm_visible_size": [
+        550,
+        55
+      ],
+      "note_receptor_region_xywh": [
+        155,
+        670,
+        800,
+        195
+      ],
+      "note": "Context positions describe existing game HUD; do not render duplicate BPM or receptors"
+    }
+  },
+  "assets": {
+    "1": {
+      "id": "1",
+      "file": "../1-photocraft-trimmed.png",
+      "source_size": [
+        957,
+        1411
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        14,
+        942,
+        1396
+      ],
+      "pivot_source_px": [
+        479.0,
+        705.0
+      ],
+      "center": [
+        550,
+        1065
+      ],
+      "scale_in_reference": 0.2894356005788712,
+      "render_size": [
+        276.9899,
+        408.3936
+      ],
+      "render_top_left": [
+        411.3603,
+        860.9479
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5546875
+      ]
+    },
+    "2": {
+      "id": "2",
+      "file": "../2-photocraft-trimmed.png",
+      "source_size": [
+        927,
+        1245
+      ],
+      "visible_bounds_xyxy": [
+        15,
+        16,
+        912,
+        1231
+      ],
+      "pivot_source_px": [
+        463.5,
+        623.5
+      ],
+      "center": [
+        550,
+        1065
+      ],
+      "scale_in_reference": 0.3292181069958848,
+      "render_size": [
+        305.1852,
+        409.8765
+      ],
+      "render_top_left": [
+        397.4074,
+        859.7325
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5546875
+      ]
+    },
+    "3": {
+      "id": "3",
+      "file": "../3-photocraft-trimmed.png",
+      "source_size": [
+        932,
+        1243
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        917,
+        1227
+      ],
+      "pivot_source_px": [
+        466.5,
+        621.5
+      ],
+      "center": [
+        550,
+        1065
+      ],
+      "scale_in_reference": 0.33030553261767137,
+      "render_size": [
+        307.8448,
+        410.5698
+      ],
+      "render_top_left": [
+        395.9125,
+        859.7151
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5546875
+      ]
+    },
+    "4": {
+      "id": "4",
+      "file": "../4-photocraft-trimmed.png",
+      "source_size": [
+        522,
+        634
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        506,
+        618
+      ],
+      "pivot_source_px": [
+        261.0,
+        317.0
+      ],
+      "center": [
+        550,
+        1065
+      ],
+      "scale_in_reference": 0.6644518272425249,
+      "render_size": [
+        346.8439,
+        421.2625
+      ],
+      "render_top_left": [
+        376.5781,
+        854.3688
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5546875
+      ]
+    },
+    "start": {
+      "id": "start",
+      "file": "../START-photocraft-trimmed.png",
+      "source_size": [
+        1424,
+        592
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        1408,
+        576
+      ],
+      "pivot_source_px": [
+        712.0,
+        296.0
+      ],
+      "center": [
+        550,
+        1065
+      ],
+      "scale_in_reference": 0.40229885057471265,
+      "render_size": [
+        572.8736,
+        238.1609
+      ],
+      "render_top_left": [
+        263.5632,
+        945.9195
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5546875
+      ]
+    },
+    "box": {
+      "id": "box",
+      "file": "../CountDownByMeasureBox-photocraft-trimmed.png",
+      "source_size": [
+        3971,
+        785
+      ],
+      "visible_bounds_xyxy": [
+        16,
+        16,
+        3955,
+        769
+      ],
+      "pivot_source_px": [
+        1985.5,
+        392.5
+      ],
+      "center": [
+        550,
+        1065
+      ],
+      "scale_in_reference": 0.10154861640010154,
+      "render_size": [
+        403.2496,
+        79.7157
+      ],
+      "render_top_left": [
+        348.3752,
+        1025.1422
+      ],
+      "normalized_center": [
+        0.5092592592592593,
+        0.5546875
+      ]
+    }
+  },
+  "title": {
+    "center": [
+      560,
+      994
+    ],
+    "font": "Oxanium",
+    "weight": 700,
+    "font_size": 46,
+    "font_file": "../challenge-meter/fonts/Oxanium-Variable.ttf",
+    "render_mode": "original_title_png",
+    "original_full_file": "../challenge-meter/titles/attack_full.png",
+    "original_prefix_file": "../challenge-meter/titles/attack.png",
+    "original_delta_21_file": "../challenge-meter/titles/attack_delta_21.png",
+    "font_usage": "Oxanium is only an approximation for variable numbers other than +21; the fixed title and default +21 use the original PNG lettering",
+    "text": "CHALLENGE ATTACK +{attack_delta}",
+    "attack_delta_example": 21,
+    "text_align": "center",
+    "vertical_align": "center",
+    "max_width": 640,
+    "visible_render_size": [
+      640,
+      40
+    ],
+    "text_fit": "Fit original title PNG visible bounds to 640x40; preserve the source glow around those bounds",
+    "overflow": "shrink the font to fit; keep the centre fixed",
+    "color": "#ff953e",
+    "glow": {
+      "color": "#ff692e",
+      "radius": 12,
+      "opacity": 0.65
+    },
+    "warning_text_optional": "⚠︎",
+    "warning_centers": [
+      [
+        198,
+        994
+      ],
+      [
+        920,
+        994
+      ]
+    ],
+    "warning_font_size": 34,
+    "z": 20
+  },
+  "label": {
+    "center": [
+      550,
+      1065
+    ],
+    "max_width": 288,
+    "font_size": 29,
+    "weight": 700,
+    "font_stack": [
+      "Yu Gothic",
+      "Noto Sans JP",
+      "sans-serif"
+    ],
+    "text": "開始まで{remaining_measures}小節",
+    "color": "#fff3c1",
+    "text_align": "center",
+    "vertical_align": "center",
+    "z": 40
+  },
+  "layers": {
+    "title": 20,
+    "box": 30,
+    "label": 40,
+    "digit": 60,
+    "start": 70
+  },
+  "states": {
+    "waiting": {
+      "show": [
+        "title",
+        "box",
+        "label"
+      ],
+      "meter_visible": false
+    },
+    "digit": {
+      "show": [
+        "title",
+        "box",
+        "label",
+        "digit"
+      ],
+      "meter_visible": false,
+      "note": "The large digit deliberately covers the title and countdown panel, as in reference image 2"
+    },
+    "start": {
+      "show": [
+        "start"
+      ],
+      "meter_visible": false
+    },
+    "meter": {
+      "show": [],
+      "meter_visible": true
+    }
+  },
+  "timing": {
+    "source": "Game music beat and measure events; do not count down using a wall-clock setInterval",
+    "digit_duration_beats": 1,
+    "start_duration_beats": 1,
+    "digit_rule": "At the start of each remaining measure (4,3,2,1), show its digit for one beat, then return to waiting",
+    "start_rule": "At the scheduled start beat, switch to START for one beat, then hide countdown and show the meter",
+    "gameplay": "The attack starts at its scheduled music beat. START is a visual transition and must not delay gameplay",
+    "time_signature": "Use the game's measure events; do not assume every measure contains four beats",
+    "seek_pause": "Recompute from the current music position; pausing music also pauses the presentation",
+    "example_4_4": [
+      {
+        "relative_beat": -16,
+        "remaining_measures": 4
+      },
+      {
+        "relative_beat": -12,
+        "remaining_measures": 3
+      },
+      {
+        "relative_beat": -8,
+        "remaining_measures": 2
+      },
+      {
+        "relative_beat": -4,
+        "remaining_measures": 1
+      },
+      {
+        "relative_beat": 0,
+        "state": "start"
+      },
+      {
+        "relative_beat": 1,
+        "state": "meter"
+      }
+    ]
+  },
+  "rendering": {
+    "alpha": "straight",
+    "blend": "normal alpha blending",
+    "extra_image_glow": false,
+    "note": "PNG images already include glow. Do not add drop shadows or additive blending by default",
+    "image_fit": "Use render_size and render_top_left; never force all source PNGs to the same pixel dimensions",
+    "minimum_clearance": "Allow the digit to extend above and below the label. Avoid clipping to the panel rectangle"
+  }
+}
