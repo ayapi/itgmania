@@ -17,7 +17,7 @@
 
 | サービス | ギフト | 単価 | 効果 |
 | --- | --- | --- | --- |
-| TikTok | バッド・マスター | 99コイン | CHALLENGE ATTACKに1単位 |
+| TikTok | パッド・マスター | 99コイン | CHALLENGE ATTACKに1単位 |
 | TikTok | ボリュームアップ | 249コイン | SHIELDに1単位 |
 | YouTube | マイク | 100ジュエル | CHALLENGE ATTACKに1単位 |
 | YouTube | やる気満々 | 250ジュエル | SHIELDに1単位 |
@@ -33,10 +33,12 @@ YouTubeは実受信で確認した画像ファイル名で判別します。
 表示名や `giftId` だけからの推測は行いません。OBSのYouTubeギフト画像にも
 この公式画像URLを設定しています。
 
-TikTokは正式IDが未確認のため、構造化された `gift.details.giftName` と
-対応表の `match_name` を照合します。通常コメントは照合しません。
-ID確定後は対応表のキーをIDに変更でき、明示IDの割り当てが優先されます。
-単価だけではATTACK・SHIELDに分類しません。
+TikTokも確認済みのIDで判別します。`data.gift.giftId` が
+`1328548` ならパッド・マスター（99コイン）、`59775` ならボリュームアップ（249コイン）。
+表示名・言語・価格だけでATTACK・SHIELDに分類しません。
+仕様書の「バッド・マスター」は一覧では「パッド・マスター」でした。
+一覧確認日: 2026-10-30。
+参照: https://tikfinity.zerody.one/api/getAllGifts?lang=ja-JP&room_id=7561433567696341767
 
 RESCUEの単価はTikTokの `diamondCount`、YouTubeの `jewels` から取得します。
 `price` は合計値なので、代用時は累積個数で割ります。連打の増分に単価を掛け、

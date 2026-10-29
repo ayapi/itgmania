@@ -23,7 +23,7 @@ def yt(key='microphone.png',count=1,id='gift-1'):
 
 def tt(count=1,id='gift-t'):
     return dict(id='service-t',service='tiktok',data=dict(id=id,liveId='live-t',name='名前',hasGift=True,
-        gift=dict(giftId='17646',repeatCount=count,details=dict(giftName='バッド・マスター',diamondCount=99))))
+        gift=dict(giftId='1328548',repeatCount=count,details=dict(giftName='パッド・マスター',diamondCount=99))))
 
 
 class OneCommeTests(unittest.TestCase):
@@ -67,8 +67,8 @@ class OneCommeTests(unittest.TestCase):
         self.assertEqual(gifts[0]['gift_id'],'heart.png')
         self.assertFalse(any(k=='hearts' for k,b in self.sent))
 
-    def test_tiktok_confirmed_name_shield(self):
-        c=tt();c['data']['gift']['giftId']='unknown-id';c['data']['gift']['details']['giftName']='ボリュームアップ'
+    def test_tiktok_confirmed_id_shield(self):
+        c=tt();c['data']['gift']['giftId']='59775';c['data']['gift']['details']['giftName']='別の言語の名前'
         self.router.send=self.api.input
         self.event([c]);self.assertEqual(self.api.commands[0]['kind'],'lock')
 
@@ -142,7 +142,7 @@ class OneCommeTests(unittest.TestCase):
         self.assertEqual(self.api.commands[0]['kind'],'rescue')
         self.assertEqual(self.api.commands[0]['points'],10)
         self.assertEqual(self.api.commands[0]['gift_count'],5)
-        c=tt(id='other');c['data']['gift']['details']=dict(giftName='バラ',diamondCount=1)
+        c=tt(id='other');c['data']['gift']['giftId']='5655';c['data']['gift']['details']=dict(giftName='バラ',diamondCount=1)
         self.event([c]);self.assertEqual(self.api.commands[-1]['points'],1)
 
     def test_old_provisional_gifts_no_longer_attack(self):
@@ -185,6 +185,16 @@ class OneCommeTests(unittest.TestCase):
             c=yt();c['data']['comment']=image;self.assertIsNone(gift(c))
         c=yt();c['data']['comment']+='<img class="gift-image" src="https://www.gstatic.com/youtube/img/pdg/gift/assets/fired_up.png=w480-h480">'
         self.assertIsNone(gift(c))
+
+
+    def test_tiktok_id_is_independent_of_name(self):
+        self.router.send=self.api.input
+        c=tt();c['data']['gift']['details']['giftName']='Different language'
+        self.event([c]);self.assertEqual(self.api.commands[0]['kind'],'trial')
+        c=tt(id='different-gift');c['data']['gift']['giftId']='17646'
+        c['data']['gift']['details']=dict(giftName='パッド・マスター',diamondCount=5)
+        self.event([c]);self.assertEqual(self.api.commands[-1]['kind'],'rescue')
+        self.assertEqual(self.api.commands[-1]['points'],5)
 
 
 

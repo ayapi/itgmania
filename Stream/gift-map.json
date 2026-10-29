@@ -1,20 +1,18 @@
 {
   "tiktok": {
-    "バッド・マスター": {
+    "1328548": {
       "kind": "trial",
       "units_per_gift": 1,
-      "name": "バッド・マスター",
-      "match_name": "バッド・マスター",
+      "name": "パッド・マスター",
       "cost": 99,
-      "image_url": ""
+      "image_url": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/bc20a01a2f9562c3942ca82cf2b0f8e3.png~tplv-obj.webp"
     },
-    "ボリュームアップ": {
+    "59775": {
       "kind": "lock",
       "units_per_gift": 1,
       "name": "ボリュームアップ",
-      "match_name": "ボリュームアップ",
       "cost": 249,
-      "image_url": ""
+      "image_url": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/50c72a9440674a6ef58c08fc51a56071.png~tplv-obj.webp"
     }
   },
   "youtube": {
