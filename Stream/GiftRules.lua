@@ -32,8 +32,13 @@ function R.new(config,lastBeat,signatures,baseAt,carry,viewers,random)
   trialUnits=carry.trialUnits or {},lockUnits=carry.lockUnits or {},strongQueue=carry.strongQueue or {},
   rescueBank=carry.rescueBank or 0,bankEvents=carry.bankEvents or {},multiplier=carry.multiplier or 1,
   tiktokTotal=nil,tiktokStream=nil,locksUsed=0,restUntil=0,autoDone=0,autoTargets={},
-  announcement=nil,deferredAuto=false,announcementSerial=0}
+  announcement=nil,deferredAuto=false,announcementSerial=0,attackAnnouncements=0,costChangedBeat=nil}
  setmetatable(t,{__index=R})
+ -- A new song resets escalating attack prices; all unspent contributions survive.
+ for _,g in ipairs(t.strongQueue) do for _,c in ipairs(g.tokens or {}) do t.trialUnits[#t.trialUnits+1]=c end end
+ t.strongQueue={}
+ t.locks=carry.locks or {}
+ for _,g in ipairs(t.locks) do g.waiting=true end
  for _,c in ipairs(t.actions) do c.applyBeat=0 end
  local eligible={} local total=R.measure(lastBeat,signatures)
  for m=math.ceil(config.trial_intro_measures/8)*8,math.floor((total-config.trial_tail_measures)/8)*8,8 do eligible[#eligible+1]=m end
@@ -60,7 +65,7 @@ function R:remainingLocks(beat)
  local m=R.measure(beat,self.signatures)
  local available=R.measure(self.lastBeat,self.signatures)-m
  if self.lock then available=available-math.max(0,self.lock.endMeasure-m) end
- return math.max(0,math.min(self.config.lock_max_per_song-self.locksUsed,math.floor((available+0.000001)/self.config.lock_min_measures)))
+ return math.max(0,math.min(self.config.lock_max_per_song-self.locksUsed-#self.locks,math.floor((available+0.000001)/self.config.lock_min_measures)))
 end
 local function displayName(tokens)
  local names,seen={},{}
@@ -68,9 +73,11 @@ local function displayName(tokens)
  if #names<=2 then return table.concat(names,'・') end
  return names[#names]..'＋ほか'..(#names-1)..'人'
 end
-function R:group(units)
+function R:attackCost() return self.requiredUnits*2^self.attackAnnouncements end
+function R:contributionCost() return self:attackCost() end
+function R:group(units,required)
  local tokens={}
- for i=1,self.requiredUnits do tokens[i]=table.remove(units,1) end
+ for i=1,(required or self.requiredUnits) do tokens[i]=table.remove(units,1) end
  return {tokens=tokens,sender=displayName(tokens),event_id=tokens[#tokens].event_id,measures=self.config.lock_min_measures}
 end
 function R:tokenEvents(group,state,reason)
@@ -100,14 +107,15 @@ function R:finishTrial(now,resolved,why)
 end
 function R:rescue(points,command,now)
  if command then
+  local count=command.gift_count or 1 local unit=points/count
   local last
   for i=#self.feed,1,-1 do
    local row=self.feed[i]
-   if row.sender==command.sender and row.unit_points==points and now-row.last_at<1.5 then last=row break end
+   if row.sender==command.sender and row.unit_points==unit and now-row.last_at<1.5 then last=row break end
   end
   if last then
-   last.points=last.points+points last.count=last.count+1 last.last_at=now
-  else self.feed[#self.feed+1]={event_id=command.event_id,sender=command.sender,points=points,unit_points=points,count=1,last_at=now} end
+   last.points=last.points+points last.count=last.count+count last.last_at=now
+  else self.feed[#self.feed+1]={event_id=command.event_id,sender=command.sender,points=points,unit_points=unit,count=count,last_at=now} end
   while #self.feed>8 do table.remove(self.feed,1) end
  end
  if not self.trial then
@@ -149,7 +157,12 @@ function R:announce(kind,group,startMeasure,beat)
  self.announcement={kind=kind,group=group,sender=group and group.sender or nil,
   id=self.announcementSerial,announcedBeat=beat,startMeasure=startMeasure,
   startBeat=R.beat(startMeasure,self.signatures)}
- if group then self:tokenEvents(group,'reserved','Strong trial countdown started') end
+ if group then
+  if not group.announced then
+   group.announced=true self.attackAnnouncements=self.attackAnnouncements+1 self.costChangedBeat=beat
+  end
+  self:tokenEvents(group,'reserved','Strong trial countdown started')
+ end
 end
 function R:cancelAnnouncement()
  local a=self.announcement if not a then return end
@@ -204,10 +217,18 @@ function R:atBeat(beat,now)
   self.completedLocks[#self.completedLocks+1]=self.lock.event_id self.lock=nil
  end
  while self.actions[1] and self.actions[1].applyBeat<=beat do self:process(table.remove(self.actions,1),beat,now) end
- while #self.trialUnits>=self.requiredUnits do
-  local g=self:group(self.trialUnits) self.strongQueue[#self.strongQueue+1]=g self:tokenEvents(g,'reserved','Strong trial reserved')
+ if #self.strongQueue==0 and #self.trialUnits>=self:contributionCost() then
+  local g=self:group(self.trialUnits,self:contributionCost()) self.strongQueue[#self.strongQueue+1]=g self:tokenEvents(g,'reserved','Strong trial reserved')
  end
- if not self.lock and #self.lockUnits>=self.requiredUnits and self:remainingLocks(beat)>0 then self:startLock(self:group(self.lockUnits),beat,now) end
+ while #self.lockUnits>=self.requiredUnits and self:remainingLocks(beat)>0 do
+  local g=self:group(self.lockUnits) self.locks[#self.locks+1]=g
+  self:tokenEvents(g,'reserved','Shield waiting for a trial')
+ end
+ -- New shields interrupt an active warning/trial, but never chain during protection.
+ if not self.lock and (self.trial or self.announcement) then
+  for i,g in ipairs(self.locks) do if not g.waiting then self:startLock(table.remove(self.locks,i),beat,now) break end end
+ end
+ for _,g in ipairs(self.locks) do g.waiting=true end
  local t=self.trial
  if t then
   if m>=t.heartsAfter then
@@ -225,6 +246,7 @@ function R:atBeat(beat,now)
   if a.kind=='normal' then self.autoDone=self.autoDone+1 end
   self:startTrial(a.kind,a.group,beat,now)
   if self.trial then self.trial.startBeat=a.startBeat end
+  if #self.locks>0 then self:startLock(table.remove(self.locks,1),beat,now) end
  end
  local notice=self:noticeMeasures()
  local total=R.measure(self.lastBeat,self.signatures)
@@ -259,17 +281,19 @@ function R:finish(now)
  if self.lock then self:tokenEvents(self.lock,'completed','Song ended') self.lock=nil end
  for _,units in ipairs({self.trialUnits,self.lockUnits,self.bankEvents}) do for _,c in ipairs(units) do self:event(c.event_id,'carried','Carried to next song') end end
  for _,g in ipairs(self.strongQueue) do self:tokenEvents(g,'carried','Strong trial carried to next song') end
+ for _,g in ipairs(self.locks) do self:tokenEvents(g,'carried','Shield carried to next song') end
 end
 function R:export()
  local events={} local function keep(c) if self.events[c.event_id] then events[c.event_id]=self.events[c.event_id] end end
  for _,units in ipairs({self.trialUnits,self.lockUnits,self.bankEvents,self.actions}) do for _,c in ipairs(units) do keep(c) end end
  for _,g in ipairs(self.strongQueue) do for _,c in ipairs(g.tokens) do keep(c) end end
+ for _,g in ipairs(self.locks) do for _,c in ipairs(g.tokens or {}) do keep(c) end end
  local queue={} for _,g in ipairs(self.strongQueue) do queue[#queue+1]=g end
  if self.announcement and self.announcement.group then
   table.insert(queue,1,self.announcement.group)
   for _,c in ipairs(self.announcement.group.tokens) do keep(c) end
  end
- return {actions=self.actions,trialUnits=self.trialUnits,lockUnits=self.lockUnits,strongQueue=queue,
+ return {actions=self.actions,locks=self.locks,trialUnits=self.trialUnits,lockUnits=self.lockUnits,strongQueue=queue,
   rescueBank=self.rescueBank,bankEvents=self.bankEvents,multiplier=self.multiplier,events=events}
 end
 function R:status(beat)
@@ -286,7 +310,9 @@ function R:status(beat)
   for i=self:noticeMeasures(),0,-1 do forecast.measure_boundaries[#forecast.measure_boundaries+1]=R.beat(a.startMeasure-i,self.signatures) end
  end
  local resolution=self.resolution and self.resolution.resolved and beat<self.resolution.end_beat and self.resolution or nil
- return {rank=self.rank,viewers=self.viewers,required_units=self.requiredUnits,trial=t and {
+ return {rank=self.rank,viewers=self.viewers,required_units=self.requiredUnits,attack_required_units=self:attackCost(),attack_contribution_required=self:contributionCost(),
+  attack_announcements=self.attackAnnouncements,cost_changed_beat=self.costChangedBeat,
+  shield_waiting=#self.locks,shield_waiting_sender=self.locks[1] and self.locks[1].sender or nil,trial=t and {
   kind=t.kind,sender=t.sender,rise=t.rise,start_beat=t.startBeat,required_points=t.required,points=t.progress,
   remaining_points=math.max(0,t.required-t.progress),heart_points=t.heartPoints,gift_points=t.giftPoints,
   heart_pending=t.heartPending,hearts_enabled=R.measure(beat,self.signatures)>=t.heartsAfter} or nil,

@@ -30,10 +30,21 @@ def numeric(body, key, lower, upper, *, integer=False):
         raise APIError(400, f'{key} must be between {lower} and {upper}' + (' (integer)' if integer else ''))
     return int(value) if integer else value
 
+def gift_rule(mapping, body):
+    gifts=mapping.get(body.get('platform'),{})
+    rule=gifts.get(body.get('gift_id'))
+    if rule: return rule
+    name=body.get('gift_name')
+    if name:
+        for rule in gifts.values():
+            if rule.get('match_name')==name: return rule
+    return None
+
+
 def validate(kind, body):
     if not isinstance(body, dict):
         raise APIError(400, 'JSON object required')
-    fields = {'notes': {'count'}, 'rescue': {'points'}, 'trial': {'count'}, 'lock': {'count'},
+    fields = {'notes': {'count'}, 'rescue': {'points','gift_count'}, 'trial': {'count'}, 'lock': {'count'},
               'hearts': {'count','total','reactions','reset','stream_id','effect'}}
     if kind == 'tempo':
         raise APIError(410, 'Version 5 uses /api/trial and /api/rescue; tempo is retired')
@@ -62,7 +73,9 @@ def validate(kind, body):
         if key in body: out[key]=numeric(body,key,0,10000000,integer=key!='amount_yen')
     if kind in ('notes','trial','lock'):
         out['count']=numeric(dict(count=body.get('count',1)),'count',1,256,integer=True)
-    elif kind=='rescue': out['points']=numeric(body,'points',1,10000000,integer=True)
+    elif kind=='rescue':
+        out['points']=numeric(body,'points',1,10000000,integer=True)
+        if 'gift_count' in body: out['gift_count']=numeric(body,'gift_count',1,256,integer=True)
     else:
         if 'effect' in body and not isinstance(body['effect'],bool): raise APIError(400,'effect must be boolean')
         if body.get('platform') not in ('tiktok','youtube'): raise APIError(400,'hearts platform must be tiktok or youtube')
@@ -248,12 +261,15 @@ class Bridge:
         if kind=='gift':
             if not isinstance(body,dict): raise APIError(400,'JSON object required')
             mapping=json.loads((self.directory/'gift-map.json').read_text(encoding='utf-8-sig'))
-            rule=mapping.get(body.get('platform'),{}).get(body.get('gift_id'))
-            if not rule: raise APIError(409,'Gift is not assigned in gift-map.json')
+            rule=gift_rule(mapping,body)
+            if not rule:
+                if body.get('platform') not in ('tiktok','youtube'): raise APIError(400,'Unknown gift platform')
+                rule=dict(kind='rescue',points_per_unit=numeric(body,'unit_value',1,10000000,integer=True))
             count=numeric(dict(count=body.get('count',1)),'count',1,256,integer=True)
-            command=dict(body);command.pop('count',None)
+            command=dict(body);command.pop('count',None);command.pop('unit_value',None);command.pop('gift_name',None)
             if not isinstance(rule,dict) or rule.get('kind') not in ('notes','rescue','trial','lock'): raise APIError(400,'Invalid gift mapping')
             action=rule['kind']
+            if action=='rescue': command['gift_count']=count
             command['points' if action=='rescue' else 'count']=count*rule.get('points_per_unit' if action=='rescue' else 'units_per_gift',1)
             return self.submit(action,command)
         if kind=='hearts' and not self.status().get('ready'):

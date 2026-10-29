@@ -67,6 +67,28 @@ def gift(comment):
     return (platform,key,count) if key and count else None
 
 
+def gift_metadata(comment, count):
+    data=comment['data']; g=data.get('gift') or {}
+    name=''; value=None
+    if comment.get('service')=='tiktok':
+        details=g.get('details') or {}
+        if not isinstance(details,dict): details={}
+        name=details.get('giftName') or g.get('giftName') or data.get('giftName') or ''
+        value=integer(details.get('diamondCount'))
+    else:
+        value=integer(data.get('jewels'))
+        class Label(HTMLParser):
+            def __init__(self): super().__init__(); self.parts=[]
+            def handle_data(self,text): self.parts.append(text)
+        parser=Label(); parser.feed(data.get('comment',''))
+        name=''.join(parser.parts).strip().removesuffix('を送信しました').strip()
+        name=data.get('giftName') or name
+    # price is the total for the cumulative count; never multiply it twice.
+    total=integer(data.get('price'))
+    if value is None and total is not None and count and total%count==0: value=total//count
+    return dict(gift_name=str(name)[:128],unit_value=value)
+
+
 def service_platform(service):
     value=str(service.get('service') or service.get('name') or '').lower()
     if value in ('tiktok','youtube'): return value
@@ -95,7 +117,6 @@ class Router:
         self.dirty=True
 
     def comments(self, rows, seed=False, history=False):
-        mapping=json.loads((self.directory/'gift-map.json').read_text(encoding='utf-8-sig'))
         for c in rows:
             if not isinstance(c,dict): continue
             g=gift(c)
@@ -116,14 +137,11 @@ class Router:
             self.state['seen'][identity]=count
             self.dirty=True
             if seed_row: continue
-            if key not in mapping.get(platform,{}):
-                self.state['unmapped']=dict(platform=platform,gift_id=key,count=count)
-                continue
             sender=''.join(ch for ch in str(data.get('displayName') or data.get('name') or '視聴者') if ord(ch)>=32)[:80]
             for start in range(old,count,256):
                 end=min(start+256,count)
                 event_id='onecomme-gift-'+digest([identity,start,end])
-                self.queue(event_id,'gift',dict(event_id=event_id,platform=platform,gift_id=key,sender=sender,count=end-start))
+                self.queue(event_id,'gift',dict(event_id=event_id,platform=platform,gift_id=key,sender=sender,count=end-start,**gift_metadata(c,count)))
 
     def services(self, rows, reset=False):
         if reset: self.state['services']={}; self.dirty=True

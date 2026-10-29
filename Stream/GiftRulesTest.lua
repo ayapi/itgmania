@@ -26,15 +26,22 @@ strong:step(96,2);eq(strong.trial.kind,'strong');eq(strong.offset,16);eq(strong.
 strong:submit(gift('hearts',99999),96);strong:step(97,3);eq(strong.offset,16)
 strong:submit(gift('rescue',15),97);strong:step(98,4);eq(strong.offset,15) -- paid rescue works in blocked heart period
 strong:submit(gift('lock'),98);strong:step(99,5);eq(strong.offset,0);eq(strong.lock.bpm,108);eq(strong.trial,nil)
-strong:submit(gift('trial'),99);strong:step(100,6);eq(#strong.strongQueue,1)
+strong:submit(gift('trial',2),99);strong:step(100,6);eq(#strong.strongQueue,1)
 strong:step(115,10);eq(strong.announcement.kind,'strong');eq(strong.offset,0)
 strong:step(131,15);eq(strong.trial.kind,'strong');eq(strong.offset,16) -- full warning after lock
-local lock=fresh();lock:submit(gift('lock',3),0);lock:step(1,1);eq(lock.locksUsed,1);lock:step(17,5);eq(lock.locksUsed,2);lock:step(33,9);eq(lock.lock,nil);eq(lock:remainingLocks(33),0);eq(#lock.lockUnits,1)
-lock:finish(10);local replay=fresh(lock:export());eq(replay.offset,0);replay:step(0,0);eq(replay.lock~=nil,true);eq(replay.locksUsed,1)
+-- Idle shields wait, catch actual starts, and never chain after expiry.
+local lock=fresh();lock:submit(gift('lock',3),0);lock:step(1,1)
+eq(lock.locksUsed,0);eq(#lock.locks,2);eq(lock:remainingLocks(1),0);eq(#lock.lockUnits,1)
+lock:step(80,2);eq(lock.announcement.kind,'normal');eq(lock.locksUsed,0)
+lock:step(96,3);eq(lock.locksUsed,1);eq(lock.metrics.trials,1);eq(lock.metrics.resolved,1);eq(lock.offset,0)
+lock:step(112,4);eq(lock.lock,nil);eq(#lock.locks,1);eq(lock.locksUsed,1)
+lock:finish(10);local replay=fresh(lock:export());replay:step(0,0)
+eq(replay.lock,nil);eq(#replay.locks,2);eq(replay.locksUsed,0)
+replay:step(96,1);eq(replay.locksUsed,1);eq(replay.metrics.resolved,1)
 local contribution=fresh(nil,350);contribution:submit(gift('trial',2,'A'),0);contribution:step(1,1);eq(#contribution.trialUnits,2)
 contribution:submit(gift('trial',2,'B'),1);contribution:step(2,2);eq(#contribution.strongQueue,1);eq(contribution.strongQueue[1].sender,'A・B')
 local late=fresh(nil,100,80);late:submit(gift('trial'),70);late:step(71,1);eq(late.offset,0);late:finish(2)
-local carry=fresh(late:export());eq(#carry.strongQueue,1);carry:step(96,1);eq(carry.trial.kind,'strong')
+local carry=fresh(late:export());eq(#carry.trialUnits,1);carry:step(96,1);eq(carry.trial.kind,'strong')
 local bank=fresh();bank:submit(gift('rescue',40),0);bank:step(1,1);eq(bank.rescueBank,40);bank:step(96,5);eq(bank.offset,8);eq(bank.rescueBank,0)
 local tt=fresh();tt:submit({kind='hearts',event_id='tt1',platform='tiktok',total=1000},0);tt:step(1,0)
 tt:step(96,1);tt:submit({kind='hearts',event_id='tt2',platform='tiktok',total=1320},96);tt:step(97,2);eq(tt.offset,9)
@@ -71,6 +78,21 @@ immediate:step(128,3);eq(immediate.announcement.startBeat,144);immediate:step(14
 -- Insufficient tail time means reservation/carry rather than a truncated notice.
 local tail=fresh(nil,100,200);tail.autoTargets={};tail:step(123,0)
 tail:submit(gift('trial'),123);tail:step(124,1);eq(tail.announcement,nil);eq(#tail.strongQueue,1)
+-- Announcements double the next price once; interrupted warnings retain identity.
+local escalating=fresh();escalating.autoTargets={};escalating:step(80,0)
+escalating:submit(gift('trial'),80);escalating:step(81,1)
+eq(escalating:attackCost(),2);eq(escalating.attackAnnouncements,1)
+escalating:submit(gift('lock'),81);escalating:step(82,2);escalating:step(98,3)
+eq(escalating.attackAnnouncements,1);eq(escalating:attackCost(),2)
+escalating:step(114,4);escalating:submit(gift('rescue',10000),114);escalating:step(115,5)
+escalating:submit(gift('trial',2),115);escalating:step(116,6)
+eq(escalating.attackAnnouncements,2);eq(escalating:attackCost(),4)
+local reset=fresh(escalating:export());eq(reset:attackCost(),1)
+-- A new shield during protection becomes waiting, rather than extending it.
+local protected=fresh();protected:step(96,0);protected:submit(gift('lock'),96);protected:step(97,1)
+local endBeat=protected.lock.endBeat;protected:submit(gift('lock'),97);protected:step(98,2)
+eq(protected.lock.endBeat,endBeat);eq(#protected.locks,1);protected:step(endBeat,3)
+eq(protected.lock,nil);eq(protected.locksUsed,1)
 -- Variable meters use actual measure boundaries, not hard-coded 16 beats.
 local meter=R.new(config,400,{{0,3,4}},function() return 108 end,nil,100,random)
 meter.autoTargets={24};meter:step(60,0);eq(meter.announcement.startBeat,72)

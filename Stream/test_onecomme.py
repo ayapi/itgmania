@@ -17,13 +17,13 @@ from onecomme import Router,WebSocket,gift
 
 def yt(key='bow.png',count=1,id='gift-1'):
     return dict(id='service-y',service='youtube',data=dict(id=id,liveId='live-y',name='視聴者',displayName='名前😀',
-        hasGift=True,giftType='jewel',giftId=f'yt-user-{key}#{id}',giftCount=count,timestamp='2026-10-23T00:00:01Z',
+        hasGift=True,giftType='jewel',giftId=f'yt-user-{key}#{id}',giftCount=count,jewels=3,giftName=('やる気満々' if key=='heart.png' else 'マイク'),timestamp='2026-10-23T00:00:01Z',
         comment=f'<img class="gift-image" src="https://www.gstatic.com/youtube/img/pdg/gift/assets/{key}=w480-h480">'))
 
 
 def tt(count=1,id='gift-t'):
     return dict(id='service-t',service='tiktok',data=dict(id=id,liveId='live-t',name='名前',hasGift=True,
-        gift=dict(giftId='17646',repeatCount=count,details=dict(giftName='Tiny Diny Mic'))))
+        gift=dict(giftId='17646',repeatCount=count,details=dict(giftName='バッド・マスター',diamondCount=99))))
 
 
 class OneCommeTests(unittest.TestCase):
@@ -67,8 +67,8 @@ class OneCommeTests(unittest.TestCase):
         self.assertEqual(gifts[0]['gift_id'],'heart.png')
         self.assertFalse(any(k=='hearts' for k,b in self.sent))
 
-    def test_tiktok_provisional_rose_lock(self):
-        c=tt();c['data']['gift']['giftId']='5655'
+    def test_tiktok_confirmed_name_shield(self):
+        c=tt();c['data']['gift']['giftId']='unknown-id';c['data']['gift']['details']['giftName']='ボリュームアップ'
         self.router.send=self.api.input
         self.event([c]);self.assertEqual(self.api.commands[0]['kind'],'lock')
 
@@ -133,6 +133,33 @@ class OneCommeTests(unittest.TestCase):
             self.assertEqual([(c['kind'],c['count']) for c in self.api.commands],[('trial',2),('lock',1)])
             self.event([yt('bow.png',2),yt('heart.png',id='lock')]);self.assertEqual(len(self.api.commands),2)
         finally:server.shutdown();server.server_close();thread.join()
+
+    def test_other_paid_gifts_rescue_at_unit_price(self):
+        self.router.send=self.api.input
+        c=yt('other.png',5);c['data'].pop('giftName');c['data']['jewels']=2;c['data']['price']=10
+        self.event([c]);self.event([c])
+        self.assertEqual(len(self.api.commands),1)
+        self.assertEqual(self.api.commands[0]['kind'],'rescue')
+        self.assertEqual(self.api.commands[0]['points'],10)
+        self.assertEqual(self.api.commands[0]['gift_count'],5)
+        c=tt(id='other');c['data']['gift']['details']=dict(giftName='バラ',diamondCount=1)
+        self.event([c]);self.assertEqual(self.api.commands[-1]['points'],1)
+
+    def test_old_provisional_gifts_no_longer_attack(self):
+        self.router.send=self.api.input
+        c=yt('bow.png');c['data'].pop('giftName')
+        self.event([c]);self.assertEqual(self.api.commands[0]['kind'],'rescue')
+        self.assertEqual(self.api.commands[0]['points'],3)
+
+    def test_unpriced_paid_receipt_is_retained(self):
+        from bridge import APIError
+        def send(k,b):
+            try: return self.api.input(k,b)
+            except APIError as e: raise ValueError(e.message)
+        self.router.send=send
+        c=yt('unknown.png');c['data'].pop('giftName');c['data'].pop('jewels')
+        self.event([c]);self.assertEqual(sum(x['kind']=='gift' for x in self.router.state['pending'].values()),1)
+
 
 
 class SocketTests(unittest.TestCase):

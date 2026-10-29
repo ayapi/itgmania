@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ITGmania 配信情報</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&amp;family=Noto+Sans+JP:wght@400;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&amp;family=Noto+Color+Emoji&amp;family=Noto+Sans+JP:wght@400;700;900&amp;display=swap">
 <style>
 /* BEGIN LOCAL BEAST FONT */
 /* END LOCAL BEAST FONT */
@@ -42,18 +42,73 @@ li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff
 .trial-center .gauge{height:26px;margin:7px 0 4px;background:#191919b3;border-width:3px}.trial-center #remaining{font-size:32px;line-height:1.15}.trial-center.strong .gauge>div{background:#ff8647}
 #bank-status{font-size:18px}#effects li{font-size:20px;line-height:1.25;width:245px;max-width:245px}#effects .sender{max-width:185px}#effects .delta{font-family:inherit;font-size:20px;letter-spacing:0;-webkit-text-stroke:0;text-shadow:inherit}
 #result{margin-top:7px;color:#ffe69b}.gift-choice{display:flex;gap:4px;align-items:center;font-size:16px}.gift-choice img{width:24px;height:24px;object-fit:contain}
+
+body{margin:0}
+.gift-ui div,.gift-ui span{paint-order:stroke fill;-webkit-text-stroke:3px rgba(0,0,0,0.95);text-shadow:0 2px 4px rgba(0,0,0,0.8)}
+.cp-glow{text-shadow:0 2px 4px rgba(0,0,0,0.8),0 0 8px var(--neon),0 0 18px var(--neon)}
+.cp-num{text-shadow:0 2px 4px rgba(0,0,0,0.8),0 0 8px rgba(255,230,0,0.8)}
+.gift-ui .cp-chip,.gift-ui .cp-tag,.gift-ui .cp-tagn{-webkit-text-stroke:0;text-shadow:none}
+a{color:#fff}a:hover{color:#ffe600}
+.cp-panel{position:relative;background:rgba(5,7,18,0.5);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));box-sizing:border-box}
+.cp-panel::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.035) 0 1px,transparent 1px 4px)}
+.cp-panel::after{content:"";position:absolute;inset:0;pointer-events:none;border:2px solid var(--neon);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+.cp-atk{--neon:#ff2d95}
+.cp-def{--neon:#00e5ff}
+.cp-chip{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:2px;color:#05070f;background:var(--neon);padding:3px 12px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%);box-shadow:0 0 12px var(--neon)}
+.cp-en{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:1px}
+.cp-glow{color:var(--neon);text-shadow:0 0 8px var(--neon),0 0 18px var(--neon)}
+.cp-num{color:#ffe600;text-shadow:0 0 8px rgba(255,230,0,0.8)}
+.cp-rule{height:2px;background:linear-gradient(90deg,var(--neon),transparent)}
+.cp-bar{height:12px;background:rgba(255,255,255,0.1);clip-path:polygon(0 0,100% 0,calc(100% - 6px) 100%,0 100%);overflow:hidden}
+.cp-fill{height:100%;background:var(--neon);box-shadow:0 0 12px var(--neon)}
+.cp-icon{width:60px;height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border:1px solid var(--neon);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.cp-tag{font-family:'Orbitron',sans-serif;font-weight:700;font-size: 18px;letter-spacing:1px;color:#05070f;background:#ffe600;padding:2px 10px;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.cp-tagn{font-family:'Orbitron',sans-serif;font-weight:700;font-size: 18px;letter-spacing:1px;color:var(--neon);border:1px solid var(--neon);padding:2px 10px;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+
+.song{left:36px;top:170px;width:650px;font-family:"Noto Sans JP","Noto Color Emoji",sans-serif}
+.song h1{font-size:34px;font-weight:900;line-height:1.1}.artist{font-size:24px;margin-top:4px;opacity:.85}
+.gift-ui{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;color:#fff;font-size:18px;line-height:1.35;font-weight:700}
+.gift-ui .cp-panel{display:flex;flex-direction:column;gap:10px;padding:16px 16px 18px}
+.attack-panel{position:absolute!important;left:36px;top:280px;width:250px}
+.defense-stack{position:absolute;right:36px;top:280px;width:250px;display:flex;flex-direction:column;gap:16px}
+.cp-heading,.gift-choice{display:flex;align-items:center;gap:8px}.cp-chip{font-size:18px}
+.gift-choice{gap:10px;margin-bottom:6px}.gift-choice:last-child{margin-bottom:0}.gift-label{min-width:0}.gift-name{font-size:22px;line-height:1.1;font-weight:900;overflow-wrap:anywhere}
+.gift-platform{font-size:14px;opacity:.8}.gift-price{font-size:20px}.cp-icon img{width:54px;height:54px;object-fit:contain}
+.cp-icon svg{width:34px;height:34px;stroke:var(--neon);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.help{opacity:.75}.progress-label{display:flex;justify-content:space-between;font-size:18px}
+.contribution{display:flex;flex-direction:column;gap:6px}.cp-fill{transition:width 140ms linear}
+#shield-waiting,#next-attack{overflow-wrap:anywhere}#cost-notice{color:#ffe600;font-size:18px}
+#effects{align-items:stretch;gap:5px}#effects li{width:100%;max-width:100%;font-size:18px;gap:4px;justify-content:space-between;padding:3px 8px;background:#00e5ff1f;border-left:3px solid #00e5ff}
+#effects .sender{max-width:125px;white-space:nowrap}#effects .delta{font-size:18px;letter-spacing:0;color:#ffe600}
 </style>
 <div id="trial-wash" aria-hidden="true"></div>
 <main id="panel" hidden>
  <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
- <section class="menu note-menu"><h2>NOTE ATTACK</h2><div class="receipt" id="receipt">100円相当 / 1ノート</div><div class="stock" id="note-stock"></div><div class="rules" id="rules"></div></section>
- <section class="menu tempo-menu"><h2>RESCUE / CHALLENGE / SAFE SHIELD</h2>
-  <div id="rank"></div><div class="price">ハート20回＝1pt / 1コイン・ジュエル＝1pt</div>
-  <div id="trial-stock"></div><div id="lock-stock"></div>
-  <div id="next-trial"></div>
-  <div id="bank-status"></div>
-  <div id="gift-menu"></div><ul id="effects"></ul><div id="result"></div>
+ <div class="gift-ui">
+ <section class="cp-panel cp-atk attack-panel">
+  <div class="cp-heading"><div class="cp-chip">ATTACK</div><div class="cp-glow">起こす</div></div>
+  <div id="attack-gifts"></div><div class="cp-rule"></div>
+  <div>BPMを上限まで上げる <span class="cp-glow" id="attack-rise"></span></div>
+  <div class="help">最初の4小節はハートが効かない</div>
+  <div id="next-attack"></div><div id="cost-notice" hidden></div>
+  <div class="contribution" id="attack-contribution" hidden><div class="progress-label"><span>次のCHALLENGE</span><span id="attack-count" class="cp-en"></span></div><div class="cp-bar"><div class="cp-fill" id="attack-fill"></div></div></div>
  </section>
+ <div class="defense-stack">
+  <section class="cp-panel cp-def">
+   <div class="cp-heading"><div class="cp-chip">SHIELD</div><div class="cp-glow">守る</div></div>
+   <div id="shield-gifts"></div><div class="cp-rule"></div>
+   <div>次の試練を盾で止める</div><div class="help">原曲BPMで4小節守る</div>
+   <div id="shield-waiting" hidden></div>
+   <div><span class="help">この曲で </span><span class="cp-tagn" id="shield-stock"></span></div>
+   <div class="contribution" id="shield-contribution" hidden><div class="progress-label"><span>SHIELD</span><span id="shield-count" class="cp-en"></span></div><div class="cp-bar"><div class="cp-fill" id="shield-fill"></div></div></div>
+  </section>
+  <section class="cp-panel cp-def" id="rescue-menu" hidden>
+   <div class="cp-heading"><div class="cp-chip">RESCUE</div><div class="cp-glow">助けて！</div></div>
+   <div>♥ ハート連打<br><span class="cp-num">20回 ＝ 1pt</span></div>
+   <div>その他のギフト<br><span class="cp-num">1コイン・ジュエル ＝ 1pt</span></div>
+   <div class="help" id="rescue-help">BPMを原曲へ戻す</div><div class="cp-rule"></div><ul id="effects"></ul>
+  </section>
+ </div></div>
  <section class="trial-center" id="trial-panel" hidden aria-live="polite">
   <div id="trial-info"></div><div id="trial-sender"></div><div id="trial-phase"></div>
   <div id="rescue"><div class="gauge"><div id="progress"></div></div><div id="remaining"></div></div>
@@ -157,24 +212,28 @@ function render(status,networkSeconds=0){
  const title=status.song_title||status.song||'';
  document.getElementById('title').textContent=title?'♪ '+title:'';
  document.getElementById('artist').textContent=status.song_artist||'';
- const count=Number(status.note_remaining)||0;
- const stock=document.getElementById('note-stock');stock.textContent=count?'残り '+count+'枠':'SOLD OUT';stock.classList.toggle('sold',!count);
- document.getElementById('rank').textContent='ランク '+(st.rank||1)+' / 同接 '+(st.viewers||0)+'人';
- const required=st.required_units||1;
- document.getElementById('trial-stock').textContent='CHALLENGE '+(st.trial_units||0)+'/'+required+'個'+(st.trial_reserved?' / 予約'+st.trial_reserved+'回':'');
- const lock=document.getElementById('lock-stock');lock.textContent=st.lock_remaining?'SAFE SHIELD '+(st.lock_units||0)+'/'+required+'個・残り'+st.lock_remaining+'回':'SAFE SHIELD SOLD OUT'+(st.lock_units?' / 持越し'+st.lock_units+'個':'');
+ const required=Number(st.required_units)||1;
+ const attackRequired=Number(st.attack_contribution_required||st.attack_required_units)||required;
  const t=st.trial;
  if(!status.native_trial_panel)drawChallenge(st,status.song_beat);
- document.getElementById('next-trial').textContent=status.bpm_lock&&st.next_trial_sender?'NEXT: '+st.next_trial_sender+'のCHALLENGE':'';
- document.getElementById('bank-status').textContent=st.rescue_bank?'救済持越し '+number(st.rescue_bank)+'pt':'';
+ document.getElementById('attack-rise').textContent='+'+(status.bpm_offset_limit||0);
+ document.getElementById('rescue-menu').hidden=!t;
+ document.getElementById('rescue-help').textContent=t&&!t.hearts_enabled?'ハート無効中・ギフトは有効':'BPMを原曲へ戻す';
+ document.getElementById('shield-stock').textContent=st.lock_remaining?'あと '+st.lock_remaining+' 回':'SOLD OUT';
+ const waiting=document.getElementById('shield-waiting');waiting.hidden=!st.shield_waiting;
+ waiting.textContent=st.shield_waiting?'SHIELD 待機中・'+(st.shield_waiting_sender||'視聴者')+(st.shield_waiting>1?' ほか'+(st.shield_waiting-1)+'枚':''):'';
+ document.getElementById('next-attack').textContent=st.next_trial_sender?'NEXT: '+st.next_trial_sender+' さん':'';
+ for(const [kind,count,need] of [['attack',st.trial_units||0,attackRequired],['shield',st.lock_units||0,required]]){
+  document.getElementById(kind+'-contribution').hidden=need<2;
+  document.getElementById(kind+'-count').textContent=count+' / '+number(need);
+  document.getElementById(kind+'-fill').style.width=Math.min(100,100*count/need)+'%';
+ }
+ const notice=document.getElementById('cost-notice');
+ const changed=Number(st.cost_changed_beat);
+ notice.hidden=st.cost_changed_beat==null||status.song_beat-changed>4||status.song_beat<changed;
+ notice.textContent='次のCHALLENGEは'+number(st.attack_required_units||required)+'個';
  document.getElementById('progress').style.width=t?Math.min(100,100*t.points/t.required_points)+'%':'0%';
- document.getElementById('remaining').textContent=t?'残り '+number(t.remaining_points)+'pt'+(t.heart_pending?' / ハート反映待ち '+number(t.heart_pending)+'pt':''):'';
- document.getElementById('rules').textContent='試練で最大＋'+(status.bpm_offset_limit||0)+'BPM\nハートと救済ギフトで原曲へ';
- const note=(status.note_feed||[]).slice(-1)[0],receipt=document.getElementById('receipt');
- receipt.textContent=note?(note.count+'ノート受付：'+note.sender):'100円相当 / 1ノート';
- if(note && receiptId!==note.event_id){receiptId=note.event_id;receipt.animate([{transform:'translateY(12px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:160,easing:'ease-out'});}
- const results=st.trial_results||[];
- document.getElementById('result').textContent=results.length?'CHALLENGE '+results.filter(r=>r.resolved).length+'/'+results.length+' CLEAR':'';
+ document.getElementById('remaining').textContent=t?'残り '+number(t.remaining_points)+'pt':'';
  const effects=(st.rescue_feed||[]).slice(-3),alive=new Set();
  for(const effect of effects){
   const id=effect.event_id;alive.add(id);let row=rows.get(id);
@@ -182,8 +241,21 @@ function render(status,networkSeconds=0){
   row.children[0].textContent=effect.sender;row.children[1].textContent='+'+number(effect.points/(effect.count||1))+'pt'+(effect.count>1?' ×'+effect.count:'');
  }
  for(const [id,row] of rows)if(!alive.has(id)){row.remove();rows.delete(id);}
- const menu=document.getElementById('gift-menu'),choices=status.gift_menu||[],key=JSON.stringify(choices);
- if(menu.dataset.key!==key){menu.dataset.key=key;menu.replaceChildren();for(const gift of choices){const row=document.createElement('div');row.className='gift-choice';if(gift.image_url){const img=document.createElement('img');img.src=gift.image_url;row.append(img);}const label=document.createElement('span');label.textContent=gift.platform+' '+gift.name+' / '+gift.cost+' '+(gift.platform==='youtube'?'ジュエル':'コイン');row.append(label);menu.append(row);}}
+ const choices=(status.gift_menu||[]).filter(g=>g.kind==='trial'||g.kind==='lock');
+ for(const [kind,id] of [['trial','attack-gifts'],['lock','shield-gifts']]){
+  const menu=document.getElementById(id),gifts=choices.filter(g=>g.kind===kind),key=JSON.stringify(gifts);
+  if(menu.dataset.key===key)continue;menu.dataset.key=key;menu.replaceChildren();
+  for(const gift of gifts){
+   const row=document.createElement('div');row.className='gift-choice';
+   const icon=document.createElement('div');icon.className='cp-icon';
+   if(gift.image_url){const img=document.createElement('img');img.src=gift.image_url;img.alt=gift.name;icon.append(img);}
+   else icon.innerHTML=kind==='trial'?'<svg viewBox="0 0 24 24" aria-label="マイク"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>':'<svg viewBox="0 0 24 24" aria-label="ギフト"><path d="M5 10h14l-2 11H7zM12 3a6 6 0 0 1 6 7H6a6 6 0 0 1 6-7zM9 15h6"/></svg>';
+   const label=document.createElement('div');label.className='gift-label';
+   for(const [cls,value] of [['gift-platform',gift.platform==='youtube'?'YouTube':'TikTok'],['gift-name',gift.name],['gift-price cp-num',gift.cost+' '+(gift.platform==='youtube'?'ジュエル':'コイン')]]){const text=document.createElement('div');text.className=cls;text.textContent=value;label.append(text);}
+   row.append(icon,label);menu.append(row);
+  }
+ }
+
 }
 function animateChallenge(now){
  if(cueClock){

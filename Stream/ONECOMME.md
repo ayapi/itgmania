@@ -11,23 +11,30 @@
 受信プログラムを起動し直してください。わんコメ側でもその接続元を許可してください。
 一時停止する場合は `enabled` を `false` にします（再接続時に読み込み）。
 
-## 仮の対応表
+## Version6-6の対応表
 
 `Save/GiftAPI/gift-map.json` を編集すると次の受信から反映されます。
-これは価格設計が決まるまでの動作確認用です。1ギフト=1単位で、試練・ロックに
-必要な単位数は既存の同接ランクのルールで決まります。
 
-| サービス | ギフト | 設定キー | 効果 |
+| サービス | ギフト | 単価 | 効果 |
 | --- | --- | --- | --- |
-| TikTok | Tiny Diny Mic（受信例） | `17646` | 強い試練に1単位 |
-| TikTok | バラ / Rose（仮） | `5655` | SAFE SHIELDに1単位 |
-| YouTube | 一礼 | `bow.png` | 強い試練に1単位 |
-| YouTube | 有料ハート | `heart.png` | SAFE SHIELDに1単位 |
-| YouTube | きらめきの画像ギフト（仮） | `sparkles_v2_320x320.png` | 救済1pt |
+| TikTok | バッド・マスター | 99コイン | CHALLENGE ATTACKに1単位 |
+| TikTok | ボリュームアップ | 249コイン | SHIELDに1単位 |
+| YouTube | マイク | 100ジュエル | CHALLENGE ATTACKに1単位 |
+| YouTube | やる気満々 | 250ジュエル | SHIELDに1単位 |
+| 両方 | その他の有料ギフト | 1コイン・ジュエル | RESCUE 1pt |
 
-TikTok救済用の `TEMP_TIKTOK_RESCUE` は差し替え用プレースホルダーです。
-未登録のギフト・スーパーチャット・普通のコメントは効果を発動しません。
-最後の未登録ギフトは `onecomme-state.json` の `unmapped` にIDだけ記録します。
+正式IDは実受信で未確認のため、`match_name` で構造化されたギフト名に照合します。
+TikTokは `gift.details.giftName`、YouTubeは `giftName` またはギフトHTMLのテキスト
+（末尾の「を送信しました」を除く）を使用します。通常コメントは照合しません。
+ID確定後は、対応表のキーをTikTokのID／YouTubeの画像ファイル名に変更できます。
+明示IDの割り当てが優先されます。単価だけではATTACK・SHIELDに分類しません。
+
+RESCUEの単価はTikTokの `diamondCount`、YouTubeの `jewels` から取得します。
+`price` は合計値なので、代用時は累積個数で割ります。連打の増分に単価を掛け、
+例の「2ジュエル×5個＝10pt」を二重計算しません。価格不明の有料イベントは
+未処理キューに保持してエラーを記録し、勝手なポイント数で消化しません。
+スーパーチャット・普通のコメント・無料ギフトは効果を発動しません。
+旧テスト割り当て（Tiny Diny Mic、バラ、一礼、有料ハート等）は廃止しました。
 
 YouTubeの `giftId` はユーザー名・イベントIDまで含むため、そのまま設定キーにしません。
 `hasGift` と `giftType=jewel` を確認したうえで、ギフト画像ファイル名に正規化します。
