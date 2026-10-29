@@ -23,11 +23,20 @@
 | YouTube | やる気満々 | 250ジュエル | SHIELDに1単位 |
 | 両方 | その他の有料ギフト | 1コイン・ジュエル | RESCUE 1pt |
 
-正式IDは実受信で未確認のため、`match_name` で構造化されたギフト名に照合します。
-TikTokは `gift.details.giftName`、YouTubeは `giftName` またはギフトHTMLのテキスト
-（末尾の「を送信しました」を除く）を使用します。通常コメントは照合しません。
-ID確定後は、対応表のキーをTikTokのID／YouTubeの画像ファイル名に変更できます。
-明示IDの割り当てが優先されます。単価だけではATTACK・SHIELDに分類しません。
+YouTubeは実受信で確認した画像ファイル名で判別します。
+マイクは `microphone.png`、やる気満々は `fired_up.png`。
+`hasGift` がJSONの `true`、かつ `giftType == "jewel"` のときだけ対象です。
+`comment` 内の `img.gift-image` の `src` から、公式の
+`https://www.gstatic.com/youtube/img/pdg/gift/assets/` 以下のファイル名を取得し、
+`=w480-h480` 等のサイズ指定を除去します。通常の絵文字画像・異なる画像パスは除外。
+複数の異なるギフト画像が混在する場合も判別しません。
+表示名や `giftId` だけからの推測は行いません。OBSのYouTubeギフト画像にも
+この公式画像URLを設定しています。
+
+TikTokは正式IDが未確認のため、構造化された `gift.details.giftName` と
+対応表の `match_name` を照合します。通常コメントは照合しません。
+ID確定後は対応表のキーをIDに変更でき、明示IDの割り当てが優先されます。
+単価だけではATTACK・SHIELDに分類しません。
 
 RESCUEの単価はTikTokの `diamondCount`、YouTubeの `jewels` から取得します。
 `price` は合計値なので、代用時は累積個数で割ります。連打の増分に単価を掛け、
@@ -38,7 +47,7 @@ RESCUEの単価はTikTokの `diamondCount`、YouTubeの `jewels` から取得し
 
 YouTubeの `giftId` はユーザー名・イベントIDまで含むため、そのまま設定キーにしません。
 `hasGift` と `giftType=jewel` を確認したうえで、ギフト画像ファイル名に正規化します。
-TikTokは `data.gift.giftId` を使います。名前は `displayName`、なければ `name` です。
+TikTokの識別キーは `data.gift.giftId` です。送信者名は `displayName`、なければ `name` です。
 
 ## 無課金タップと同接
 

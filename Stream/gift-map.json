@@ -18,21 +18,19 @@
     }
   },
   "youtube": {
-    "マイク": {
+    "microphone.png": {
       "kind": "trial",
       "units_per_gift": 1,
       "name": "マイク",
-      "match_name": "マイク",
       "cost": 100,
-      "image_url": ""
+      "image_url": "https://www.gstatic.com/youtube/img/pdg/gift/assets/microphone.png=w480-h480"
     },
-    "やる気満々": {
+    "fired_up.png": {
       "kind": "lock",
       "units_per_gift": 1,
       "name": "やる気満々",
-      "match_name": "やる気満々",
       "cost": 250,
-      "image_url": ""
+      "image_url": "https://www.gstatic.com/youtube/img/pdg/gift/assets/fired_up.png=w480-h480"
     }
   }
 }

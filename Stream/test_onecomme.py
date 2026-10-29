@@ -15,7 +15,7 @@ from bridge import Bridge,make_handler
 from onecomme import Router,WebSocket,gift
 
 
-def yt(key='bow.png',count=1,id='gift-1'):
+def yt(key='microphone.png',count=1,id='gift-1'):
     return dict(id='service-y',service='youtube',data=dict(id=id,liveId='live-y',name='視聴者',displayName='名前😀',
         hasGift=True,giftType='jewel',giftId=f'yt-user-{key}#{id}',giftCount=count,jewels=3,giftName=('やる気満々' if key=='heart.png' else 'マイク'),timestamp='2026-10-23T00:00:01Z',
         comment=f'<img class="gift-image" src="https://www.gstatic.com/youtube/img/pdg/gift/assets/{key}=w480-h480">'))
@@ -51,12 +51,12 @@ class OneCommeTests(unittest.TestCase):
         self.assertEqual(len({x['event_id'] for x in gifts}),3)
 
     def test_distinct_youtube_users_use_same_stable_key(self):
-        a=yt(); b=yt(id='gift-2'); b['data']['giftId']='yt-other-user-bow.png#gift-2'
-        self.event([a,b]); self.assertEqual([b['gift_id'] for k,b in self.sent if k=='gift'],['bow.png','bow.png'])
+        a=yt(); b=yt(id='gift-2'); b['data']['giftId']='yt-other-user-microphone.png#gift-2'
+        self.event([a,b]); self.assertEqual([b['gift_id'] for k,b in self.sent if k=='gift'],['microphone.png','microphone.png'])
 
-    def test_fallback_gift_id_discards_sender_and_transaction(self):
+    def test_gift_id_alone_does_not_replace_gift_image(self):
         c=yt();c['data']['comment']='';c['data']['giftId']='yt-sender-with-hyphens-heart.png#transaction'
-        self.assertEqual(gift(c),('youtube','heart.png',1))
+        self.assertIsNone(gift(c))
 
     def test_invalid_shapes_do_not_become_gifts(self):
         self.router.handle([]);self.assertIsNone(gift(dict(service='youtube',data=[])))
@@ -129,9 +129,9 @@ class OneCommeTests(unittest.TestCase):
                 req=Request(f'http://127.0.0.1:{server.server_port}/api/{k}',json.dumps(b).encode(),{'Content-Type':'application/json'})
                 with urlopen(req) as r:return json.load(r)
             self.router.send=send
-            self.event([yt('bow.png',2),yt('heart.png',id='lock')])
+            self.event([yt('microphone.png',2),yt('fired_up.png',id='lock')])
             self.assertEqual([(c['kind'],c['count']) for c in self.api.commands],[('trial',2),('lock',1)])
-            self.event([yt('bow.png',2),yt('heart.png',id='lock')]);self.assertEqual(len(self.api.commands),2)
+            self.event([yt('microphone.png',2),yt('fired_up.png',id='lock')]);self.assertEqual(len(self.api.commands),2)
         finally:server.shutdown();server.server_close();thread.join()
 
     def test_other_paid_gifts_rescue_at_unit_price(self):
@@ -159,6 +159,32 @@ class OneCommeTests(unittest.TestCase):
         self.router.send=send
         c=yt('unknown.png');c['data'].pop('giftName');c['data'].pop('jewels')
         self.event([c]);self.assertEqual(sum(x['kind']=='gift' for x in self.router.state['pending'].values()),1)
+
+
+    def test_youtube_image_identity_not_localized_label(self):
+        self.router.send=self.api.input
+        for key in ('microphone.png','fired_up.png'):
+            c=yt(key,id=key);c['data']['comment']=c['data']['comment'].split('>')[0]+' />unrelated label'
+            c['data']['giftName']='別の名前'
+            self.event([c])
+        self.assertEqual([c['kind'] for c in self.api.commands],['trial','lock'])
+        c=yt('other.png',id='fake-label');c['data']['giftName']='マイク'
+        self.event([c]);self.assertEqual(self.api.commands[-1]['kind'],'rescue')
+
+    def test_youtube_requires_both_paid_gift_flags(self):
+        for flag,value in [('hasGift',False),('hasGift','true'),('giftType','superchat'),('giftType',None)]:
+            c=yt();c['data'][flag]=value
+            self.assertIsNone(gift(c))
+        c=yt();c['data'].pop('hasGift');self.assertIsNone(gift(c))
+
+    def test_emoji_images_do_not_identify_gifts(self):
+        for image in (
+            '<img src="https://www.gstatic.com/youtube/img/pdg/gift/assets/microphone.png=w480-h480">',
+            '<img class="gift-image" src="https://example.com/youtube/img/pdg/gift/assets/microphone.png">',
+            '<img class="gift-image" src="https://www.gstatic.com/youtube/img/emojis/microphone.png">'):
+            c=yt();c['data']['comment']=image;self.assertIsNone(gift(c))
+        c=yt();c['data']['comment']+='<img class="gift-image" src="https://www.gstatic.com/youtube/img/pdg/gift/assets/fired_up.png=w480-h480">'
+        self.assertIsNone(gift(c))
 
 
 

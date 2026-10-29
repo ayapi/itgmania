@@ -34,6 +34,7 @@ def gift_rule(mapping, body):
     gifts=mapping.get(body.get('platform'),{})
     rule=gifts.get(body.get('gift_id'))
     if rule: return rule
+    if body.get('platform')=='youtube': return None
     name=body.get('gift_name')
     if name:
         for rule in gifts.values():

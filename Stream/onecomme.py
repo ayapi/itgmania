@@ -34,13 +34,20 @@ def digest(value):
 
 class GiftImage(HTMLParser):
     def __init__(self):
-        super().__init__(); self.file=None
+        super().__init__(); self.files=set()
+
+    @property
+    def file(self): return next(iter(self.files)) if len(self.files)==1 else None
 
     def handle_starttag(self, tag, attrs):
         a=dict(attrs)
         if tag=='img' and 'gift-image' in a.get('class','').split():
-            path=urlsplit(a.get('src','')).path
-            if '/gift/assets/' in path: self.file=path.rsplit('/',1)[-1].split('=')[0]
+            try: url=urlsplit(a.get('src') or '')
+            except ValueError: return
+            prefix='/youtube/img/pdg/gift/assets/'
+            if url.scheme=='https' and url.hostname=='www.gstatic.com' and url.path.startswith(prefix):
+                key=url.path[len(prefix):].split('=')[0]
+                if key.endswith('.png') and '/' not in key: self.files.add(key)
 
 
 def gift(comment):
@@ -54,14 +61,9 @@ def gift(comment):
         g=data.get('gift') or {}
         if not isinstance(g,dict): return None
         key=str(g.get('giftId','')); count=integer(g.get('repeatCount',1),1000000)
-    elif platform=='youtube' and data.get('giftType')=='jewel':
+    elif platform=='youtube' and data.get('hasGift') is True and data.get('giftType')=='jewel':
         parser=GiftImage(); parser.feed(data.get('comment',''))
         key=parser.file
-        # Fallback for the captured yt-<sender>-<filename>#<transaction> form.
-        if not key:
-            import re
-            match=re.search(r'-([^-/#]+\.png)#',str(data.get('giftId','')))
-            key=match.group(1) if match else None
         count=integer(data.get('giftCount',1),1000000)
     else: return None  # A paid YouTube heart is a gift, not a free reaction.
     return (platform,key,count) if key and count else None
