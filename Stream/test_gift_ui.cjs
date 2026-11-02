@@ -6,7 +6,7 @@ class Element {
  remove(){} animate(){}
 }
 const elements=new Map(),get=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id)};
-const ctx={document:{getElementById:get,createElement:()=>new Element()},syncPulse(){},syncChallenge(){},
+const ctx={platform:'',document:{getElementById:get,createElement:()=>new Element()},syncPulse(){},syncChallenge(){},
  drawChallenge(){throw Error('native meter should suppress browser meter')},number:String,rows:new Map(),session:null,panel:get('panel'),list:get('effects')};
 vm.createContext(ctx);vm.runInContext(html.slice(html.indexOf('function render(status'),html.indexOf('function animateChallenge')),ctx);
 const menu=JSON.parse(fs.readFileSync(path.join(__dirname,'gift-map.json')));
@@ -26,6 +26,10 @@ ctx.render({...status,trial_state:{required_units:1,attack_required_units:2,lock
  trial:{hearts_enabled:false,points:10,required_points:100,remaining_points:90},rescue_feed:[{event_id:'gift',sender:'名前',points:10,count:5}]}});
 assert(!get('rescue-menu').hidden);assert(get('cost-notice').hidden);
 assert.equal(get('effects').children[0].children[1].textContent,'+2pt ×5');
+ctx.platform='tiktok';ctx.render(status);
+assert.equal(get('attack-gifts').children.length,1);assert.equal(get('rescue-unit').textContent,'1コイン ＝ 1pt');
+ctx.platform='youtube';ctx.render(status);
+assert.equal(get('shield-gifts').children.length,1);assert.equal(get('rescue-unit').textContent,'1ジュエル ＝ 1pt');
 ctx.render({...status,ready:false,trial_state:{}});assert(get('panel').hidden);
 assert(!html.includes('id="rank"'));assert(!html.includes('NOTE ATTACK'));
 console.log('PASS: gift menus, waiting shields, escalating prices, rescue aggregation, native meter and literal names');

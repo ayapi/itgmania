@@ -111,6 +111,7 @@ end
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_api_background.py\r\n'
         b'python Stream\\start_onecomme_background.py\r\n'
+        b'python Stream\\start_overlay_server_background.py\r\n'
         b'python Stream\\start_obs_background.py\r\n'
         b'python Stream\\start_room_light_background.py\r\n'
         b'python Stream\\start_game_background.py\r\n')
@@ -118,6 +119,12 @@ end
         b'@echo off\r\ncd /d "%~dp0"\r\n'
         b'python Stream\\start_api_background.py\r\n'
         b'python Stream\\start_room_light_background.py\r\n')
+    (root/'start-overlay.cmd').write_bytes(
+        b'@echo off\r\ncd /d "%~dp0"\r\n'
+        b'python Stream\\start_api_background.py\r\n'
+        b'python Stream\\start_overlay_server_background.py\r\n')
+    (root/'allow-lan-overlay.cmd').write_bytes(
+        b'@echo off\r\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Stream\\allow_lan_overlay.ps1"\r\n')
     print('Installed streaming/gifts into '+str(root))
 
 if __name__=='__main__':

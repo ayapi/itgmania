@@ -243,3 +243,5 @@ The lock badge uses muted brushed gold with dark brown lettering. Tempo
 notices use a thinner black outline and reserve the lane group width (240
 logical units including the delta). Names keep their fixed size and truncate
 only when that full line is exhausted. The three BPM HUD rows stack closely.
+
+別PCのOBSから利用する場合は [LAN-OVERLAY.md](LAN-OVERLAY.md) を参照。

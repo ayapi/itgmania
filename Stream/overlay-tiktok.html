@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ITGmania TikTok 配信情報</title>
+<meta name="stream-platform" content="tiktok">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&amp;family=Noto+Color+Emoji&amp;family=Noto+Sans+JP:wght@400;700;900&amp;display=swap">
+<style>
+/* BEGIN LOCAL BEAST FONT */
+/* END LOCAL BEAST FONT */
+:root{--bpm-x:540px;--bpm-bottom:1021px}
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:"Noto Color Emoji","Noto Sans JP",sans-serif;font-weight:700}
+[hidden]{display:none!important}
+#trial-wash{position:fixed;inset:0;background:#ff871a;opacity:0;pointer-events:none;will-change:opacity;z-index:0}
+body:not(.light-only) #trial-wash{display:none}
+body.light-only{width:100vw;height:100vh;background:#000}
+body.light-only #trial-wash{background:#000;opacity:1;will-change:background-color}
+body.light-only main{display:none!important}
+main{z-index:1;position:relative;width:1080px;height:1920px}
+.song{position:absolute;left:40px;top:135px;width:490px;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000,0 -2px 0 #000}
+h1{margin:0;font-size:40px;line-height:1.25;font-weight:700;overflow-wrap:anywhere}.artist{margin-top:6px;font-size:32px;line-height:1.3;overflow-wrap:anywhere}
+.effects{position:absolute;left:var(--bpm-x);bottom:calc(1920px - var(--bpm-bottom) + 68px + var(--lock-space,0px));transform:translateX(-50%);width:470px}
+ul{padding:0;margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;list-style:none}
+li{display:flex;align-items:center;gap:12px;max-width:470px;padding:0;color:#fff;font-size:34px;line-height:1.2}
+.sender{min-width:0;max-width:330px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 2px 3px #000,2px 0 2px #000,-2px 0 2px #000,0 -2px 2px #000}
+.delta{flex:none;font-family:"Beast Machines",monospace;font-weight:400;line-height:1.15;letter-spacing:3px;white-space:nowrap;font-variant-numeric:tabular-nums;color:#fff;-webkit-text-stroke:1.4px var(--delta-color);paint-order:stroke fill;text-shadow:0 0 5px var(--delta-color)}.positive{--delta-color:#ff4040}.negative{--delta-color:#39d638}
+.menu{position:absolute;top:255px;width:245px;color:#fff;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000;font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;font-size:18px;line-height:1.2}
+.note-menu{left:24px}.tempo-menu{right:24px}.menu h2{font-size:23px;margin:0 0 4px}.price{font-size:16px}.stock{font-size:24px;margin-top:4px}.sold{color:#ffdc00}
+.rules{margin-top:4px;font-size:13px;line-height:1.3;white-space:pre-line;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000}
+.receipt{font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gauge{height:16px;margin:7px 0;border:2px solid white;background:#2229;border-radius:3px;overflow:hidden}.gauge>div{height:100%;background:#ffc74b;width:0;transition:width 140ms linear}
+.trial-center{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;position:absolute;left:var(--bpm-x);top:calc(var(--bpm-bottom) + 36px);transform:translateX(-50%);width:660px;text-align:center;color:white;text-shadow:2px 2px 0 #000,-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,0 2px 0 #000,0 -2px 0 #000}
+#trial-info{font-size:48px;line-height:1.12;color:#ffbb57;font-weight:700;white-space:nowrap}#trial-panel.strong #trial-info{font-size:64px;color:#ff6e40;text-shadow:3px 3px 0 #230900,-3px -3px 0 #230900,3px -3px 0 #230900,-3px 3px 0 #230900}
+#trial-sender{font-size:36px;line-height:1.2;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+#trial-panel.announcing #trial-info{color:#ffe6a1;font-size:54px}
+.trial-center.announcing #trial-phase{font-size:34px;color:#ffe6a1;min-height:0}
+#trial-panel.counting #trial-info{font-size:124px;line-height:1;color:#fff2c2}
+.trial-center.counting #trial-phase{font-size:28px}
+.trial-center.clearing #trial-info{font-size:58px;color:#b7fff2;text-shadow:2px 2px 0 #07352e,-2px -2px 0 #07352e,2px -2px 0 #07352e,-2px 2px 0 #07352e,0 0 16px #53ffe699}
+.trial-center.clearing #trial-phase{display:none}
+#next-trial{font-size:18px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ffe6a1}
+#trial-phase{font-size:22px;line-height:1.2;min-height:27px;margin-top:3px;color:#ffe5a1}
+.trial-center .gauge{height:26px;margin:7px 0 4px;background:#191919b3;border-width:3px}.trial-center #remaining{font-size:32px;line-height:1.15}.trial-center.strong .gauge>div{background:#ff8647}
+#bank-status{font-size:18px}#effects li{font-size:20px;line-height:1.25;width:245px;max-width:245px}#effects .sender{max-width:185px}#effects .delta{font-family:inherit;font-size:20px;letter-spacing:0;-webkit-text-stroke:0;text-shadow:inherit}
+#result{margin-top:7px;color:#ffe69b}.gift-choice{display:flex;gap:4px;align-items:center;font-size:16px}.gift-choice img{width:24px;height:24px;object-fit:contain}
+
+body{margin:0}
+.gift-ui div,.gift-ui span{paint-order:stroke fill;-webkit-text-stroke:3px rgba(0,0,0,0.95);text-shadow:0 2px 4px rgba(0,0,0,0.8)}
+.cp-glow{text-shadow:0 2px 4px rgba(0,0,0,0.8),0 0 8px var(--neon),0 0 18px var(--neon)}
+.cp-num{text-shadow:0 2px 4px rgba(0,0,0,0.8),0 0 8px rgba(255,230,0,0.8)}
+.gift-ui .cp-chip,.gift-ui .cp-tag,.gift-ui .cp-tagn{-webkit-text-stroke:0;text-shadow:none}
+a{color:#fff}a:hover{color:#ffe600}
+.cp-panel{position:relative;background:rgba(5,7,18,0.5);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));box-sizing:border-box}
+.cp-panel::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.035) 0 1px,transparent 1px 4px)}
+.cp-panel::after{content:"";position:absolute;inset:0;pointer-events:none;border:2px solid var(--neon);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+.cp-atk{--neon:#ff2d95}
+.cp-def{--neon:#00e5ff}
+.cp-chip{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:2px;color:#05070f;background:var(--neon);padding:3px 12px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%);box-shadow:0 0 12px var(--neon)}
+.cp-en{font-family:'Orbitron',sans-serif;font-weight:900;letter-spacing:1px}
+.cp-glow{color:var(--neon);text-shadow:0 0 8px var(--neon),0 0 18px var(--neon)}
+.cp-num{color:#ffe600;text-shadow:0 0 8px rgba(255,230,0,0.8)}
+.cp-rule{height:2px;background:linear-gradient(90deg,var(--neon),transparent)}
+.cp-bar{height:12px;background:rgba(255,255,255,0.1);clip-path:polygon(0 0,100% 0,calc(100% - 6px) 100%,0 100%);overflow:hidden}
+.cp-fill{height:100%;background:var(--neon);box-shadow:0 0 12px var(--neon)}
+.cp-icon{width:60px;height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border:1px solid var(--neon);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.cp-tag{font-family:'Orbitron',sans-serif;font-weight:700;font-size: 18px;letter-spacing:1px;color:#05070f;background:#ffe600;padding:2px 10px;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.cp-tagn{font-family:'Orbitron',sans-serif;font-weight:700;font-size: 18px;letter-spacing:1px;color:var(--neon);border:1px solid var(--neon);padding:2px 10px;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+
+.song{left:36px;top:170px;width:650px;font-family:"Noto Sans JP","Noto Color Emoji",sans-serif}
+.song h1{font-size:34px;font-weight:900;line-height:1.1}.artist{font-size:24px;margin-top:4px;opacity:.85}
+.gift-ui{font-family:"Noto Sans JP","Noto Color Emoji",sans-serif;color:#fff;font-size:18px;line-height:1.35;font-weight:700}
+.gift-ui .cp-panel{display:flex;flex-direction:column;gap:10px;padding:16px 16px 18px}
+.attack-panel{position:absolute!important;left:36px;top:280px;width:250px}
+.defense-stack{position:absolute;right:36px;top:280px;width:250px;display:flex;flex-direction:column;gap:16px}
+.cp-heading,.gift-choice{display:flex;align-items:center;gap:8px}.cp-chip{font-size:18px}
+.gift-choice{gap:10px;margin-bottom:6px}.gift-choice:last-child{margin-bottom:0}.gift-label{min-width:0}.gift-name{font-size:22px;line-height:1.1;font-weight:900;overflow-wrap:anywhere}
+.gift-platform{font-size:14px;opacity:.8}.gift-price{font-size:20px}.cp-icon img{width:54px;height:54px;object-fit:contain}
+.cp-icon svg{width:34px;height:34px;stroke:var(--neon);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.help{opacity:.75}.progress-label{display:flex;justify-content:space-between;font-size:18px}
+.contribution{display:flex;flex-direction:column;gap:6px}.cp-fill{transition:width 140ms linear}
+#shield-waiting,#next-attack{overflow-wrap:anywhere}#cost-notice{color:#ffe600;font-size:18px}
+#effects{align-items:stretch;gap:5px}#effects li{width:100%;max-width:100%;font-size:18px;gap:4px;justify-content:space-between;padding:3px 8px;background:#00e5ff1f;border-left:3px solid #00e5ff}
+#effects .sender{max-width:125px;white-space:nowrap}#effects .delta{font-size:18px;letter-spacing:0;color:#ffe600}
+</style>
+<div id="trial-wash" aria-hidden="true"></div>
+<main id="panel" hidden>
+ <section class="song"><h1 id="title"></h1><div class="artist" id="artist"></div></section>
+ <div class="gift-ui">
+ <section class="cp-panel cp-atk attack-panel">
+  <div class="cp-heading"><div class="cp-chip">ATTACK</div><div class="cp-glow">起こす</div></div>
+  <div id="attack-gifts"></div><div class="cp-rule"></div>
+  <div>BPMを上限まで上げる <span class="cp-glow" id="attack-rise"></span></div>
+  <div class="help">最初の4小節はハートが効かない</div>
+  <div id="next-attack"></div><div id="cost-notice" hidden></div>
+  <div class="contribution" id="attack-contribution" hidden><div class="progress-label"><span>次のCHALLENGE</span><span id="attack-count" class="cp-en"></span></div><div class="cp-bar"><div class="cp-fill" id="attack-fill"></div></div></div>
+ </section>
+ <div class="defense-stack">
+  <section class="cp-panel cp-def">
+   <div class="cp-heading"><div class="cp-chip">SHIELD</div><div class="cp-glow">守る</div></div>
+   <div id="shield-gifts"></div><div class="cp-rule"></div>
+   <div>次の試練を盾で止める</div><div class="help">原曲BPMで4小節守る</div>
+   <div id="shield-waiting" hidden></div>
+   <div><span class="help">この曲で </span><span class="cp-tagn" id="shield-stock"></span></div>
+   <div class="contribution" id="shield-contribution" hidden><div class="progress-label"><span>SHIELD</span><span id="shield-count" class="cp-en"></span></div><div class="cp-bar"><div class="cp-fill" id="shield-fill"></div></div></div>
+  </section>
+  <section class="cp-panel cp-def" id="rescue-menu" hidden>
+   <div class="cp-heading"><div class="cp-chip">RESCUE</div><div class="cp-glow">助けて！</div></div>
+   <div>♥ ハート連打<br><span class="cp-num">20回 ＝ 1pt</span></div>
+   <div>その他のギフト<br><span class="cp-num" id="rescue-unit">1コイン・ジュエル ＝ 1pt</span></div>
+   <div class="help" id="rescue-help">BPMを原曲へ戻す</div><div class="cp-rule"></div><ul id="effects"></ul>
+  </section>
+ </div></div>
+ <section class="trial-center" id="trial-panel" hidden aria-live="polite">
+  <div id="trial-info"></div><div id="trial-sender"></div><div id="trial-phase"></div>
+  <div id="rescue"><div class="gauge"><div id="progress"></div></div><div id="remaining"></div></div>
+ </section>
+</main>
+<script>
+'use strict';
+const panel=document.getElementById('panel'),list=document.getElementById('effects');
+const rows=new Map();let session;
+let receiptId;
+const number=value=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1,useGrouping:false}).format(value);
+const params=new URLSearchParams(location.search);
+const platform=document.querySelector('meta[name="stream-platform"]')?.content||'';
+// OBS composites this dedicated source with SCREEN. Black contributes no
+// light; changing RGB brightness controls blend strength without alpha fades.
+const lightOnly=params.get('mode')==='light'||document.querySelector('meta[name="stream-mode"]')?.content==='light';
+document.body.classList.toggle('light-only',lightOnly);
+for(const [key,css] of [['bpmX','--bpm-x'],['bpmBottom','--bpm-bottom']]){
+ const value=Number(params.get(key));if(params.has(key)&&Number.isFinite(value))document.documentElement.style.setProperty(css,value+'px');
+}
+// BPM clock: interpolate locally between snapshots instead of stepping at
+// the HTTP polling rate. No audio/microphone stream is needed.
+function trialPulseOpacity(beat,bpm){
+ const skip=Math.max(1,Math.ceil(bpm/180));
+ const phase=((beat/skip)%1+1)%1;
+ return 0.12+0.38*(1+Math.cos(phase*2*Math.PI))/2;
+}
+const wash=document.getElementById('trial-wash');
+let pulseClock=null;
+function setPulseStrength(strength){
+ if(lightOnly){
+  wash.style.opacity='1';
+  wash.style.backgroundColor=`rgb(${Math.round(255*strength)},${Math.round(135*strength)},${Math.round(26*strength)})`;
+ }else wash.style.opacity='0';
+}
+function clearPulse(){pulseClock=null;setPulseStrength(0);}
+function syncPulse(status,networkSeconds=0){
+ if(status.protocol_version!==5||!status.ready||status.connected===false||!status.trial_state?.trial){clearPulse();return;}
+ const bpm=Number(status.effective_bpm),beat=Number(status.song_beat);
+ if(!Number.isFinite(bpm)||bpm<=0||!Number.isFinite(beat)){clearPulse();return;}
+ const age=Math.min(0.5,Math.max(0,Number(status.snapshot_age_seconds)||0)+networkSeconds);
+ pulseClock={beat:beat+age*bpm/60,bpm,at:performance.now()};
+}
+function animatePulse(now){
+ if(pulseClock){
+  const elapsed=(now-pulseClock.at)/1000;
+  if(elapsed>1.5)clearPulse();
+  else setPulseStrength(trialPulseOpacity(pulseClock.beat+elapsed*pulseClock.bpm/60,pulseClock.bpm));
+ }
+ requestAnimationFrame(animatePulse);
+}
+requestAnimationFrame(animatePulse);
+// Derive the cue from the musical clock, including the last measure's beats.
+function challengePresentation(st,beat){
+ const r=st.resolution,a=st.announcement,t=st.trial;
+ if(r?.resolved && beat<r.end_beat){
+  const phase=Math.max(0,(beat-r.beat)/(r.end_beat-r.beat));
+  return {mode:'clearing',title:'CHALLENGE CLEAR!',phase:'',sender:'',strong:false,
+   scale:1+0.08*Math.exp(-phase*16),alpha:Math.min(1,(1-phase)*5)};
+ }
+ if(a){
+  const title=a.kind==='strong'?'CHALLENGE ATTACK':'CHALLENGE';
+  if(beat>=a.final_measure_beat){
+   return {mode:'counting',title:beat>=a.start_beat?'START!':String(Math.max(1,Math.ceil(a.start_beat-beat-1e-6))),
+    phase:title,sender:a.sender||'',strong:a.kind==='strong',
+    scale:1+0.08*Math.exp(-(beat-Math.floor(beat))*14),alpha:1};
+  }
+  const measures=a.measure_boundaries?.filter(b=>b>beat+1e-6).length||a.remaining_measures;
+  return {mode:'announcing',title,phase:'開始まで'+measures+'小節',sender:a.sender||'',strong:a.kind==='strong',scale:1,alpha:1};
+ }
+ if(t)return {mode:'active',title:t.kind==='strong'?'強い試練 ＋'+t.rise:'CHALLENGE ＋'+t.rise,
+  phase:!t.hearts_enabled?'ハート無効中 / 救済ギフト・ロックは有効':'',sender:t.kind==='strong'?t.sender:'',strong:t.kind==='strong',scale:1,alpha:1};
+ return null;
+}
+let cueClock=null;
+function syncChallenge(status,networkSeconds){
+ if(status.native_trial_panel){cueClock=null;document.getElementById('trial-panel').hidden=true;return;}
+ if(status.protocol_version!==5||!status.ready||status.connected===false){cueClock=null;return;}
+ const bpm=Number(status.effective_bpm),beat=Number(status.song_beat);
+ if(!Number.isFinite(bpm)||bpm<=0||!Number.isFinite(beat)){cueClock=null;return;}
+ const age=Math.min(.5,Math.max(0,Number(status.snapshot_age_seconds)||0)+networkSeconds);
+ cueClock={st:status.trial_state||{},beat:beat+age*bpm/60,bpm,at:performance.now()};
+}
+function drawChallenge(st,beat){
+ const cue=challengePresentation(st,beat),central=document.getElementById('trial-panel');
+ central.hidden=!cue;
+ for(const mode of ['announcing','counting','clearing'])central.classList.toggle(mode,cue?.mode===mode);
+ central.classList.toggle('strong',!!cue?.strong);
+ const title=document.getElementById('trial-info');title.textContent=cue?.title||'';
+ title.style.transform=`scale(${cue?.scale||1})`;title.style.opacity=String(cue?.alpha??1);
+ const sender=document.getElementById('trial-sender');sender.hidden=!cue?.sender;sender.textContent=cue?.sender||'';
+ document.getElementById('trial-phase').textContent=cue?.phase||'';
+ document.getElementById('rescue').hidden=cue?.mode!=='active';
+}
+function render(status,networkSeconds=0){
+ syncPulse(status,networkSeconds);
+ syncChallenge(status,networkSeconds);
+ const st=status.trial_state||{};
+ panel.hidden=status.protocol_version!==5 || !(status.connected!==false && (status.ready || ((st.trial_results||[]).length && status.reason==='Gameplay ended')));
+ if(panel.hidden){list.replaceChildren();rows.clear();return;}
+ if(session!==status.session){list.replaceChildren();rows.clear();session=status.session;}
+ const title=status.song_title||status.song||'';
+ document.getElementById('title').textContent=title?'♪ '+title:'';
+ document.getElementById('artist').textContent=status.song_artist||'';
+ const required=Number(st.required_units)||1;
+ const attackRequired=Number(st.attack_contribution_required||st.attack_required_units)||required;
+ const t=st.trial;
+ if(!status.native_trial_panel)drawChallenge(st,status.song_beat);
+ document.getElementById('attack-rise').textContent='+'+(status.bpm_offset_limit||0);
+ document.getElementById('rescue-menu').hidden=!t;
+ document.getElementById('rescue-help').textContent=t&&!t.hearts_enabled?'ハート無効中・ギフトは有効':'BPMを原曲へ戻す';
+ document.getElementById('shield-stock').textContent=st.lock_remaining?'あと '+st.lock_remaining+' 回':'SOLD OUT';
+ const waiting=document.getElementById('shield-waiting');waiting.hidden=!st.shield_waiting;
+ waiting.textContent=st.shield_waiting?'SHIELD 待機中・'+(st.shield_waiting_sender||'視聴者')+(st.shield_waiting>1?' ほか'+(st.shield_waiting-1)+'枚':''):'';
+ document.getElementById('next-attack').textContent=st.next_trial_sender?'NEXT: '+st.next_trial_sender+' さん':'';
+ for(const [kind,count,need] of [['attack',st.trial_units||0,attackRequired],['shield',st.lock_units||0,required]]){
+  document.getElementById(kind+'-contribution').hidden=need<2;
+  document.getElementById(kind+'-count').textContent=count+' / '+number(need);
+  document.getElementById(kind+'-fill').style.width=Math.min(100,100*count/need)+'%';
+ }
+ const notice=document.getElementById('cost-notice');
+ const changed=Number(st.cost_changed_beat);
+ notice.hidden=st.cost_changed_beat==null||status.song_beat-changed>4||status.song_beat<changed;
+ notice.textContent='次のCHALLENGEは'+number(st.attack_required_units||required)+'個';
+ document.getElementById('progress').style.width=t?Math.min(100,100*t.points/t.required_points)+'%':'0%';
+ document.getElementById('remaining').textContent=t?'残り '+number(t.remaining_points)+'pt':'';
+ const effects=(st.rescue_feed||[]).slice(-3),alive=new Set();
+ for(const effect of effects){
+  const id=effect.event_id;alive.add(id);let row=rows.get(id);
+  if(!row){row=document.createElement('li');row.append(document.createElement('span'),document.createElement('span'));row.children[0].className='sender';row.children[1].className='delta';rows.set(id,row);list.append(row);row.animate([{transform:'translateY(12px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:150,easing:'ease-out'});}
+  row.children[0].textContent=effect.sender;row.children[1].textContent='+'+number(effect.points/(effect.count||1))+'pt'+(effect.count>1?' ×'+effect.count:'');
+ }
+ for(const [id,row] of rows)if(!alive.has(id)){row.remove();rows.delete(id);}
+ document.getElementById('rescue-unit').textContent=(platform==='tiktok'?'1コイン':platform==='youtube'?'1ジュエル':'1コイン・ジュエル')+' ＝ 1pt';
+ const choices=(status.gift_menu||[]).filter(g=>(g.kind==='trial'||g.kind==='lock')&&(!platform||g.platform===platform));
+ for(const [kind,id] of [['trial','attack-gifts'],['lock','shield-gifts']]){
+  const menu=document.getElementById(id),gifts=choices.filter(g=>g.kind===kind),key=JSON.stringify(gifts);
+  if(menu.dataset.key===key)continue;menu.dataset.key=key;menu.replaceChildren();
+  for(const gift of gifts){
+   const row=document.createElement('div');row.className='gift-choice';
+   const icon=document.createElement('div');icon.className='cp-icon';
+   if(gift.image_url){const img=document.createElement('img');img.src=gift.image_url;img.alt=gift.name;icon.append(img);}
+   else icon.innerHTML=kind==='trial'?'<svg viewBox="0 0 24 24" aria-label="マイク"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>':'<svg viewBox="0 0 24 24" aria-label="ギフト"><path d="M5 10h14l-2 11H7zM12 3a6 6 0 0 1 6 7H6a6 6 0 0 1 6-7zM9 15h6"/></svg>';
+   const label=document.createElement('div');label.className='gift-label';
+   for(const [cls,value] of [['gift-platform',gift.platform==='youtube'?'YouTube':'TikTok'],['gift-name',gift.name],['gift-price cp-num',gift.cost+' '+(gift.platform==='youtube'?'ジュエル':'コイン')]]){const text=document.createElement('div');text.className=cls;text.textContent=value;label.append(text);}
+   row.append(icon,label);menu.append(row);
+  }
+ }
+
+}
+function animateChallenge(now){
+ if(cueClock){
+  const elapsed=(now-cueClock.at)/1000;
+  if(elapsed>1.5){cueClock=null;document.getElementById('trial-panel').hidden=true;}
+  else drawChallenge(cueClock.st,cueClock.beat+elapsed*cueClock.bpm/60);
+ }
+ requestAnimationFrame(animateChallenge);
+}
+requestAnimationFrame(animateChallenge);
+async function poll(){
+ const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),2000);
+ const sentAt=performance.now();
+ try{const response=await fetch('/api/status',{cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw new Error('status');const status=await response.json();render(status,(performance.now()-sentAt)/2000);
+ }catch{clearPulse();cueClock=null;panel.hidden=true;list.replaceChildren();rows.clear();}finally{clearTimeout(timeout);setTimeout(poll,250);}
+}
+poll();
+</script>
+</html>

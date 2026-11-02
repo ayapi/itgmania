@@ -105,7 +105,7 @@ a{color:#fff}a:hover{color:#ffe600}
   <section class="cp-panel cp-def" id="rescue-menu" hidden>
    <div class="cp-heading"><div class="cp-chip">RESCUE</div><div class="cp-glow">助けて！</div></div>
    <div>♥ ハート連打<br><span class="cp-num">20回 ＝ 1pt</span></div>
-   <div>その他のギフト<br><span class="cp-num">1コイン・ジュエル ＝ 1pt</span></div>
+   <div>その他のギフト<br><span class="cp-num" id="rescue-unit">1コイン・ジュエル ＝ 1pt</span></div>
    <div class="help" id="rescue-help">BPMを原曲へ戻す</div><div class="cp-rule"></div><ul id="effects"></ul>
   </section>
  </div></div>
@@ -121,9 +121,10 @@ const rows=new Map();let session;
 let receiptId;
 const number=value=>new Intl.NumberFormat('ja-JP',{maximumFractionDigits:1,useGrouping:false}).format(value);
 const params=new URLSearchParams(location.search);
+const platform=document.querySelector('meta[name="stream-platform"]')?.content||'';
 // OBS composites this dedicated source with SCREEN. Black contributes no
 // light; changing RGB brightness controls blend strength without alpha fades.
-const lightOnly=params.get('mode')==='light';
+const lightOnly=params.get('mode')==='light'||document.querySelector('meta[name="stream-mode"]')?.content==='light';
 document.body.classList.toggle('light-only',lightOnly);
 for(const [key,css] of [['bpmX','--bpm-x'],['bpmBottom','--bpm-bottom']]){
  const value=Number(params.get(key));if(params.has(key)&&Number.isFinite(value))document.documentElement.style.setProperty(css,value+'px');
@@ -241,7 +242,8 @@ function render(status,networkSeconds=0){
   row.children[0].textContent=effect.sender;row.children[1].textContent='+'+number(effect.points/(effect.count||1))+'pt'+(effect.count>1?' ×'+effect.count:'');
  }
  for(const [id,row] of rows)if(!alive.has(id)){row.remove();rows.delete(id);}
- const choices=(status.gift_menu||[]).filter(g=>g.kind==='trial'||g.kind==='lock');
+ document.getElementById('rescue-unit').textContent=(platform==='tiktok'?'1コイン':platform==='youtube'?'1ジュエル':'1コイン・ジュエル')+' ＝ 1pt';
+ const choices=(status.gift_menu||[]).filter(g=>(g.kind==='trial'||g.kind==='lock')&&(!platform||g.platform===platform));
  for(const [kind,id] of [['trial','attack-gifts'],['lock','shield-gifts']]){
   const menu=document.getElementById(id),gifts=choices.filter(g=>g.kind===kind),key=JSON.stringify(gifts);
   if(menu.dataset.key===key)continue;menu.dataset.key=key;menu.replaceChildren();
