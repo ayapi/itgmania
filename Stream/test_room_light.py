@@ -17,12 +17,12 @@ class LightTests(unittest.TestCase):
         self.assertEqual(light.color(12),light.rgb(BLUE,1))
     def test_age_and_speed_changes(self):
         light=BeatLight();light.sync(self.status(snapshot_age_seconds=.1),0,.025)
-        expected=.22+.78*math.exp(-.25*7)
+        expected=.55+.45*math.exp(-.25*4)
         self.assertEqual(light.color(0),light.rgb(BLUE,expected))
         s=self.status();s['effective_bpm']=150;light.sync(s,1)
         self.assertEqual(light.color(1.4),light.rgb(BLUE,1))
     def test_stop_pause_disconnect_stale_and_invalid(self):
-        light=BeatLight();idle=light.rgb(BLUE,.55)
+        light=BeatLight();idle=light.rgb(BLUE,1)
         for key,value in [('ready',False),('connected',False),('effective_bpm',0),('effective_bpm',float('nan')),('song_beat',float('inf')),('snapshot_age_seconds',2)]:
             s=self.status();s[key]=value;light.sync(s,0);self.assertEqual(light.color(.1),idle)
         light.sync({},0);self.assertEqual(light.color(0),idle)

@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from urllib.request import urlopen
 
-BLUE=(24,88,255)
+BLUE=(110,210,255)
 ORANGE=(255,112,18)
 
 class BeatLight:
@@ -28,11 +28,11 @@ class BeatLight:
         self.clock=(beat,bpm,received_at,ORANGE if trial else BLUE)
 
     def color(self,now):
-        if self.clock is None or now-self.clock[2]>1.5: return self.rgb(BLUE,.55)
+        if self.clock is None or now-self.clock[2]>1.5: return self.rgb(BLUE,1)
         beat,bpm,at,color=self.clock
         phase=(beat+(now-at)*bpm/60+1e-9)%1
         # Immediate beat accent, followed by a smooth fall to a visible floor.
-        strength=.22+.78*math.exp(-phase*7)
+        strength=(.55+.45*math.exp(-phase*4)) if color==BLUE else (.22+.78*math.exp(-phase*7))
         return self.rgb(color,strength)
 
     @staticmethod
@@ -61,7 +61,7 @@ class RoomLight:
         try: saved=json.loads(self.path.read_text(encoding='utf-8'))
         except (OSError,ValueError): saved={}
         self.root=tk.Tk();self.root.title('ITGmania 部屋の照明 — F11:全画面 / Esc:戻す / F9:裏へ')
-        self.root.configure(background=BeatLight.rgb(BLUE,.55));self.root.minsize(320,200)
+        self.root.configure(background=BeatLight.rgb(BLUE,1));self.root.minsize(320,200)
         self.root.geometry(f"{max(320,int(saved.get('width',1400)))}x{max(200,int(saved.get('height',900)))}+60+60")
         self.light=BeatLight();self.stop=threading.Event();self.mailbox=queue.Queue();self.last_color=None
         self.normal=None;self.save_timer=None;self.fullscreen=False;self.saved=saved
