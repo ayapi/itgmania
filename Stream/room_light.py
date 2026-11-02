@@ -10,7 +10,9 @@ from pathlib import Path
 from urllib.request import urlopen
 
 BLUE=(110,210,255)
-ORANGE=(255,112,18)
+WHITE=(255,255,255)
+RED=(255,35,25)
+YELLOW=(255,255,110)
 
 class BeatLight:
     def __init__(self): self.clock=None
@@ -25,15 +27,17 @@ class BeatLight:
         except (ValueError,TypeError,KeyError): return
         beat+=(max(0,age)+max(0,network_seconds))*bpm/60
         trial=(status.get('trial_state') or {}).get('trial')
-        self.clock=(beat,bpm,received_at,ORANGE if trial else BLUE)
+        self.clock=(beat,bpm,received_at,RED if trial else BLUE)
 
     def color(self,now):
         if self.clock is None or now-self.clock[2]>1.5: return self.rgb(BLUE,1)
         beat,bpm,at,color=self.clock
         phase=(beat+(now-at)*bpm/60+1e-9)%1
-        # Immediate beat accent, followed by a smooth fall to a visible floor.
-        strength=(.08+.92*math.exp(-phase*4)) if color==BLUE else (.22+.78*math.exp(-phase*7))
-        return self.rgb(color,strength)
+        # Add light on each beat; the base color never dims toward black.
+        highlight=YELLOW if color==RED else WHITE
+        pulse=(math.exp(-phase*5)-math.exp(-5))/(1-math.exp(-5))
+        mixed=tuple(round(base+(peak-base)*pulse) for base,peak in zip(color,highlight))
+        return self.rgb(mixed,1)
 
     @staticmethod
     def rgb(color,strength): return '#'+''.join(f'{round(v*strength):02x}' for v in color)
