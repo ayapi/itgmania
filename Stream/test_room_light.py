@@ -17,7 +17,7 @@ class LightTests(unittest.TestCase):
         self.assertEqual(light.color(12),light.rgb(BLUE,1))
     def test_age_and_speed_changes(self):
         light=BeatLight();light.sync(self.status(snapshot_age_seconds=.1),0,.025)
-        expected=.55+.45*math.exp(-.25*4)
+        expected=.08+.92*math.exp(-.25*4)
         self.assertEqual(light.color(0),light.rgb(BLUE,expected))
         s=self.status();s['effective_bpm']=150;light.sync(s,1)
         self.assertEqual(light.color(1.4),light.rgb(BLUE,1))

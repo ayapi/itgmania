@@ -32,7 +32,7 @@ class BeatLight:
         beat,bpm,at,color=self.clock
         phase=(beat+(now-at)*bpm/60+1e-9)%1
         # Immediate beat accent, followed by a smooth fall to a visible floor.
-        strength=(.55+.45*math.exp(-phase*4)) if color==BLUE else (.22+.78*math.exp(-phase*7))
+        strength=(.08+.92*math.exp(-phase*4)) if color==BLUE else (.22+.78*math.exp(-phase*7))
         return self.rgb(color,strength)
 
     @staticmethod
