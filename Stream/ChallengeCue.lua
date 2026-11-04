@@ -152,7 +152,7 @@ for _,skin in ipairs({'attack','cleared'}) do
  meter[#meter+1]=layer
 end
 meter[#meter+1]=Def.Sprite{Name='Cursor',Texture=assets..'shared/cursor.png',InitCommand=function(self) self:y((127-128+192-195)*MS):zoomto(256*MS,384*MS) end}
-meter[#meter+1]=LoadFont(counterFont)..{Name='Counter',InitCommand=function(self) self:xy((1950-1024)*MS,-1):halign(1):zoom(0.55):diffuse(color('#bbffff')):shadowlength(0) end}
+meter[#meter+1]=LoadFont(counterFont)..{Name='Counter',InitCommand=function(self) self:xy((1950-1024)*MS,-2.5):halign(1):zoom(0.55):diffuse(color('#bbffff')):shadowlength(0) end}
 af[#af+1]=meter
 if SupportsRenderToTexture() then
  local warm=Def.ActorFrameTexture{Name='FontWarmup',InitCommand=function(self) self:SetWidth(256):SetHeight(64):EnableAlphaBuffer(true):Create():visible(false) end}
