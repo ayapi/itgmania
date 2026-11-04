@@ -161,6 +161,12 @@ class Router:
         if isinstance(data,list): self.services(data); return
         if not isinstance(data,dict): return
         if isinstance(data.get('services'),list): self.services(data['services']); return
+        # Raw remote meta uses {type, service, data}; SDK callbacks may use {service, meta}.
+        service=data.get('service')
+        values=data.get('data') if isinstance(data.get('data'),dict) else data.get('meta')
+        if isinstance(service,dict) and service.get('id') and isinstance(values,dict):
+            item=dict(service);item['meta']=values
+            self.services([item]);return
         if data.get('id'):
             self.services([data if 'meta' in data else dict(id=data['id'],meta=data)]); return
         # Raw meta events can be keyed by the OneComme service ID.
@@ -222,8 +228,14 @@ class Router:
             self.dirty=True
             self.publish_meta()
         elif kind=='reactions' and isinstance(data,dict):
+            if isinstance(data.get('data'),dict):
+                service=data.get('service') or {}
+                if data.get('type')!='youtube' and (not isinstance(service,dict) or service_platform(service)!='youtube'): return
+                data=data['data']
+            incoming=data.get('reactions')
+            if not isinstance(incoming,list): return
             rows=[]
-            for r in data.get('reactions',[]):
+            for r in incoming:
                 value=integer(r.get('value'),10000000) if isinstance(r,dict) else None
                 if value is not None and isinstance(r.get('key'),str): rows.append(dict(key=r['key'],value=value))
             if rows:

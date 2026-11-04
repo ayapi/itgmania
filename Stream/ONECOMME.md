@@ -91,3 +91,16 @@ TikTokの識別キーは `data.gift.giftId` です。送信者名は `displayNam
 [ServiceMeta](https://onecomme.com/sdk/interfaces/types_Service.ServiceMeta.html)。
 接続パスは公式 `@onecomme.com/onesdk` 配布コードの `/sub?p=...` と一致させています。
 Roseの仮IDの確認元: [Lumia Streamのギフト受信例](https://dev.lumiastream.com/docs/alerts/tiktok/alert-tiktok-gift)。
+
+## YouTube縦型ライブのハートについて
+
+スマホのショートライブ表示のハートは、通常チャットの `reactions` と異なります。
+わんコメ作者の2026-10-25の調査では高評価として扱われ、連打のエフェクトは
+配信者・PC視聴者へ送信されないため取得できないとのことです。
+参照: https://forum.onecomme.com/t/topic/3354
+
+本連携では実際に届いた `reactions` のみを20回=1ptで数えます。
+高評価の増分や同接から、ハートの連打数を推測して投入することはしません。
+`reactions` は直接のデータと、`{type:"youtube",service,data}` 形式の両方を受け付けます。
+配信情報 `meta` も、実受信の `{type,service,data}` とSDKの `{service,meta}` に対応。
+同接は正しく取り込みますが、ランクは既存仕様どおり曲の開始時に固定します。

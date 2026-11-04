@@ -197,6 +197,35 @@ class OneCommeTests(unittest.TestCase):
         self.assertEqual(self.api.commands[-1]['points'],5)
 
 
+    def test_remote_meta_service_data_envelope(self):
+        self.router.handle(dict(type='meta',data=dict(type='youtube',service=dict(id='yt-live',name='YouTube',enabled=True),
+            data=dict(isLive=True,viewer=6,upVote='7'))));self.router.flush()
+        self.assertEqual(self.router.state['audience']['youtube'],6)
+        self.assertEqual([b['youtube'] for k,b in self.sent if k=='audience'][-1],6)
+        self.assertFalse(any(k=='hearts' for k,b in self.sent))  # Likes are not repeated heart taps.
+        self.router.handle(dict(type='meta',data=dict(service=dict(id='yt-live',name='YouTube',enabled=True),meta=dict(viewer=8))))
+        self.assertEqual(self.router.state['audience']['youtube'],8)
+
+    def test_remote_tiktok_meta_reaches_cumulative_hearts(self):
+        service=dict(id='tt-live',name='TikTok',enabled=True)
+        for total in (1000,1040):
+            self.router.handle(dict(type='meta',data=dict(type='tiktok',service=service,
+                data=dict(isLive=True,viewer=52,totalLikeCount=total,url='https://www.tiktok.com/@example/live'))))
+            self.router.flush()
+        self.assertEqual(self.router.state['audience']['tiktok'],52)
+        self.assertEqual([b['total'] for k,b in self.sent if k=='hearts'],[1000,1040])
+
+    def test_wrapped_youtube_reactions(self):
+        self.router.handle(dict(type='reactions',data=dict(type='youtube',service=dict(name='YouTube'),
+            data=dict(effect=True,reactions=[dict(key='heart',value=40)]))))
+        self.router.flush()
+        hearts=[b for k,b in self.sent if k=='hearts']
+        self.assertEqual(hearts[0]['reactions'],[dict(key='heart',value=40)])
+        self.router.handle(dict(type='reactions',data=dict(type='tiktok',service=dict(name='TikTok'),
+            data=dict(reactions=[dict(key='heart',value=40)]))))
+        self.router.flush();self.assertEqual(len([b for k,b in self.sent if k=='hearts']),1)
+
+
 
 class SocketTests(unittest.TestCase):
     def test_upgrade_fragmentation_and_ping(self):
