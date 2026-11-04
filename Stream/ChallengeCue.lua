@@ -132,7 +132,7 @@ local af=Def.ActorFrame{
   image('cleared_right','cleared/badge_right.png',-10*S+370*S,0,20,19),
  },
  countdownImage('Box','box'),
- LoadFont(font)..{Name='Label',InitCommand=function(self) self:zoom(0.58):diffuse(color('#fff3c1')):strokecolor(0,0,0,0):shadowlength(0):visible(false) end},
+ LoadFont(font)..{Name='Label',InitCommand=function(self) self:zoom(0.8):diffuse(color('#fff3c1')):strokecolor(0,0,0,0):shadowlength(0):visible(false) end},
  countdownImage('Number1','1'),countdownImage('Number2','2'),countdownImage('Number3','3'),countdownImage('Number4','4'),
  countdownImage('Start','start'),
  LoadFont(font)..{Name='Sender',InitCommand=function(self) self:y(29):zoom(0.65):visible(false):diffuse(1,1,1,1):strokecolor(0,0,0,1):shadowlength(0) end},
